@@ -329,7 +329,7 @@
             </button>
 
             <button onclick="openBlendLabModal()" class="glass-card hover:bg-white/80 border border-[#8429c8]/20 p-5 rounded-2xl text-center flex flex-col items-center justify-center group transition-all duration-300 min-h-[160px] relative overflow-hidden bg-gradient-to-br from-white/70 to-[#f2daff]/30">
-              <span class="absolute top-2 right-2 bg-brand-secondary text-white text-[8px] font-extrabold px-1.5 py-0.5 rounded-full uppercase tracking-wider">NEW</span>
+              <span class="absolute top-2 right-2 bg-brand-secondary text-white text-[9px] font-extrabold px-1.5 py-0.5 rounded-full uppercase tracking-wider">NEW</span>
               <div class="w-11 h-11 rounded-full bg-purple-100 text-brand-secondary flex items-center justify-center mb-3 group-hover:scale-110 transition-transform duration-300">
                 <i data-lucide="beaker" class="w-5 h-5"></i>
               </div>
@@ -613,7 +613,7 @@
               <div class="border-t border-brand-outline-variant/30 pt-3">
                 <label class="block text-xs font-semibold text-[#5a4136] mb-1">Restore From Backup String</label>
                 <div class="flex gap-2">
-                  <input type="text" id="input-sync-key" placeholder="Paste data backup string" class="w-full bg-[#f4f4f0] p-3 rounded-xl text-xs border border-transparent focus:border-brand-primary outline-none">
+                  <input type="text" id="input-sync-key" placeholder="Paste data backup string" class="w-full bg-[#f4f4f0] p-3 rounded-xl text-xs border border-transparent focus:border-brand-primary outline-none font-mono">
                   <button onclick="connectExistingKey()" class="bg-brand-secondary text-white text-xs font-bold px-4 py-3 rounded-xl hover:bg-brand-secondary-container transition-all">
                     Restore
                   </button>
@@ -940,13 +940,46 @@
     window.userAge = 28;
     window.userGender = "male";
 
+    // Optimized Rolling Tally Cache (Prevents N-loop recalculations)
+    let rollingTallies = { calories: 0, vitc: 0, vita: 0, pot: 0, fiber: 0, weight: 0 };
+
+    // $O(1)$ Search Keyword Index (Pre-populated on DB init)
+    let searchTokenIndex = {};
+
+    // $O(1)$ DOM Cache Register (Prevents heavy document.getElementById lookups on draw loops)
+    const DOM = {};
+    const DOM_IDS = [
+      'logged-items-container', 'log-empty-state', 'log-count-badge', 'clear-all-log-btn',
+      'blender-layers-container', 'dash-calories', 'dash-count', 'dash-hydration',
+      'total-consumed-weight', 'total-water-est', 'droplet-fluid-txt',
+      'hydration-percentage-badge', 'droplet-water-level', 'dash-score',
+      'small-txt-pot', 'small-bar-pot', 'small-txt-vita', 'small-bar-vita',
+      'central-percentage', 'central-calorie-track', 'central-progress-circle',
+      'header-vitc-prog', 'header-vita-prog', 'header-water-prog',
+      'skin-glow-percentage', 'synthesis-vision', 'immune-percentage',
+      'synthesis-immune', 'energy-percentage', 'synthesis-energy',
+      'synthesis-dynamic-tip', 'weekly-days-bars', 'weekly-history-list',
+      'library-fruit-catalog', 'insights-calorie-text', 'insights-calorie-subtitle',
+      'insights-calorie-circle', 'prog-txt-vitc', 'prog-bar-vitc', 'prog-txt-vita',
+      'prog-bar-vita', 'prog-txt-pot', 'prog-bar-pot', 'prog-txt-fiber',
+      'prog-bar-fiber', 'sync-key-display', 'input-sync-key', 'user-name',
+      'user-age', 'user-gender', 'user-goal-calories', 'season-announcement-banner',
+      'lib-season-emoji', 'lib-season-title', 'lib-season-desc', 'glow-1', 'glow-2',
+      'glow-3', 'season-emoji', 'season-lbl', 'season-dropdown'
+    ];
+
     window.FRUIT_DATABASE = JSON.parse(JSON.stringify(BASE_FRUIT_DATABASE));
 
     window.onload = function() {
+      // 1. Instantly register and Cache DOM reference pointers
+      for (let i = 0; i < DOM_IDS.length; i++) {
+        DOM[DOM_IDS[i]] = document.getElementById(DOM_IDS[i]);
+      }
+
       // Load tabs
       switchTab('logger', document.querySelector('.nav-tab-btn:nth-child(3)'));
       
-      // Load saved DB variables on start
+      // Load saved variables
       window.currentLog = VitamixDB.get('current_log', []);
       window.weekHistory = VitamixDB.get('week_history', []);
       window.weeklyHydrationTotal = VitamixDB.get('weekly_hydration', 0);
@@ -964,22 +997,56 @@
       window.userGender = VitamixDB.get('user_gender', "male");
 
       // Bind profile inputs
-      const nameInput = document.getElementById('user-name');
-      if (nameInput) nameInput.value = window.userName;
-      const ageInput = document.getElementById('user-age');
-      if (ageInput) ageInput.value = window.userAge;
-      const genderInput = document.getElementById('user-gender');
-      if (genderInput) genderInput.value = window.userGender;
-      const goalInput = document.getElementById('user-goal-calories');
-      if (goalInput) goalInput.value = window.userGoalCalories;
+      if (DOM['user-name']) DOM['user-name'].value = window.userName;
+      if (DOM['user-age']) DOM['user-age'].value = window.userAge;
+      if (DOM['user-gender']) DOM['user-gender'].value = window.userGender;
+      if (DOM['user-goal-calories']) DOM['user-goal-calories'].value = window.userGoalCalories;
 
-      // Generate local backup payload string
+      // Initialize optimized search token maps and rolling totals
+      buildSearchIndex();
+      recomputeRollingTotals();
       updateBackupPayload();
 
       setSeason('spring', true);
       lucide.createIcons();
     };
 
+    // Pre-calculate full Inverted Search Index on start/morphic shift for fast token queries
+    function buildSearchIndex() {
+      searchTokenIndex = {};
+      const fruits = Object.values(window.FRUIT_DATABASE);
+      for (let i = 0; i < fruits.length; i++) {
+        const fruit = fruits[i];
+        const keywords = [
+          ...fruit.name.toLowerCase().split(/\s+/),
+          ...fruit.category.toLowerCase().split(/\s+/),
+          ...fruit.benefits.toLowerCase().replace(/[.,!]/g, '').split(/\s+/)
+        ];
+        for (let k = 0; k < keywords.length; k++) {
+          const key = keywords[k];
+          if (key.length < 2) continue;
+          if (!searchTokenIndex[key]) searchTokenIndex[key] = [];
+          if (!searchTokenIndex[key].includes(fruit.id)) {
+            searchTokenIndex[key].push(fruit.id);
+          }
+        }
+      }
+    }
+
+    // Recompute global tallies on database load
+    function recomputeRollingTotals() {
+      rollingTallies = { calories: 0, vitc: 0, vita: 0, pot: 0, fiber: 0, weight: 0 };
+      for (let i = 0; i < window.weekHistory.length; i++) {
+        const dayLog = window.weekHistory[i];
+        rollingTallies.calories += dayLog.calories;
+        rollingTallies.vitc += dayLog.vitc;
+        rollingTallies.vita += dayLog.vita;
+        rollingTallies.pot += dayLog.pot;
+        rollingTallies.fiber += dayLog.fiber;
+      }
+    }
+
+    // Create Base64 serialization payload for painless PWA sync backups
     function updateBackupPayload() {
       const payload = {
         currentLog: window.currentLog,
@@ -992,9 +1059,10 @@
         userAge: window.userAge,
         userGender: window.userGender
       };
-      const payloadStr = btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
-      const display = document.getElementById('sync-key-display');
-      if (display) display.value = payloadStr;
+      try {
+        const payloadStr = btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
+        if (DOM['sync-key-display']) DOM['sync-key-display'].value = payloadStr;
+      } catch(e) {}
     }
 
     function switchTab(tabId, buttonElement) {
@@ -1022,8 +1090,7 @@
     }
 
     function toggleSeasonDropdown() {
-      const dd = document.getElementById('season-dropdown');
-      if (dd) dd.classList.toggle('hidden');
+      if (DOM['season-dropdown']) DOM['season-dropdown'].classList.toggle('hidden');
     }
 
     function setSeason(seasonKey, isInitial = false) {
@@ -1031,13 +1098,12 @@
       const preset = SEASON_PRESETS[seasonKey];
       if (!preset) return;
 
-      const dd = document.getElementById('season-dropdown');
-      if (dd) dd.classList.add('hidden');
+      if (DOM['season-dropdown']) DOM['season-dropdown'].classList.add('hidden');
 
       safeSetText('season-emoji', preset.emoji);
       safeSetText('season-lbl', preset.label);
       
-      const banner = document.getElementById('season-announcement-banner');
+      const banner = DOM['season-announcement-banner'];
       if (banner) {
         banner.innerHTML = `
           <span class="text-lg">${preset.emoji}</span>
@@ -1052,9 +1118,9 @@
       safeSetText('lib-season-title', `${preset.label} Season Live!`);
       safeSetText('lib-season-desc', preset.bannerText);
 
-      const glow1 = document.getElementById('glow-1');
-      const glow2 = document.getElementById('glow-2');
-      const glow3 = document.getElementById('glow-3');
+      const glow1 = DOM['glow-1'];
+      const glow2 = DOM['glow-2'];
+      const glow3 = DOM['glow-3'];
 
       if (glow1) glow1.className = `ambient-glow-1 ${preset.g1}`;
       if (glow2) glow2.className = `ambient-glow-2 ${preset.g2}`;
@@ -1063,10 +1129,10 @@
       window.FRUIT_DATABASE = JSON.parse(JSON.stringify(BASE_FRUIT_DATABASE));
       
       const fruitsToDeactive = ['apple', 'banana', 'orange', 'berries'];
-      fruitsToDeactive.forEach(fid => {
-        const indicator = document.getElementById(`seasonal-indicator-${fid}`);
+      for (let i = 0; i < fruitsToDeactive.length; i++) {
+        const indicator = document.getElementById(`seasonal-indicator-${fruitsToDeactive[i]}`);
         if (indicator) indicator.classList.add('hidden');
-      });
+      }
 
       if (seasonKey === 'spring') {
         window.FRUIT_DATABASE.orange.vitc = Math.round(window.FRUIT_DATABASE.orange.vitc * 1.2);
@@ -1092,6 +1158,9 @@
         if (ind) ind.classList.remove('hidden');
         safeSetText('banana-desc-stat', "A-Vitamin Boost!");
       }
+
+      // Re-index keywords for searches since metrics have shifted
+      buildSearchIndex();
 
       if (!isInitial) {
         triggerToast(`Climate shifted into ${preset.label}! Refreshing values.`);
@@ -1168,14 +1237,16 @@
       saveToDB();
     }
 
-    // Favorites rendering matching screen favorites list
     function renderFavoritesList() {
-      const container = document.getElementById('favorites-list-container');
+      const container = DOM['favorites-list-container'];
       if (!container) return;
 
-      container.innerHTML = Object.keys(window.favoriteRecipes).map(key => {
+      const keys = Object.keys(window.favoriteRecipes);
+      let output = '';
+      for (let i = 0; i < keys.length; i++) {
+        const key = keys[i];
         const fav = window.favoriteRecipes[key];
-        return `
+        output += `
           <button onclick="loadFavoritePreset('${key}')" class="w-full flex items-center justify-between p-2 rounded-xl bg-white/60 hover:bg-white border border-white/40 hover:border-[#8429c8]/30 transition-all text-left group">
             <div class="flex items-center gap-2">
               <span class="text-lg">${fav.emoji}</span>
@@ -1187,7 +1258,8 @@
             <i data-lucide="chevron-right" class="w-3.5 h-3.5 text-brand-secondary"></i>
           </button>
         `;
-      }).join('');
+      }
+      container.innerHTML = output;
       lucide.createIcons();
     }
 
@@ -1195,7 +1267,8 @@
       const preset = window.favoriteRecipes[presetId];
       if (!preset) return;
 
-      preset.ingredients.forEach(fid => {
+      for (let i = 0; i < preset.ingredients.length; i++) {
+        const fid = preset.ingredients[i];
         if (window.FRUIT_DATABASE[fid]) {
           window.currentLog.push({
             ...window.FRUIT_DATABASE[fid],
@@ -1203,7 +1276,7 @@
             customId: 'lab-item-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4)
           });
         }
-      });
+      }
 
       window.weeklyHydrationTotal += 200;
       triggerToast(`Loaded "${preset.name}". +200ml Liquid added.`);
@@ -1242,20 +1315,37 @@
       }
 
       let totalCals = 0, totalC = 0, totalA = 0, totalPot = 0, totalFib = 0;
-      window.currentLog.forEach(item => {
+      for (let i = 0; i < window.currentLog.length; i++) {
+        const item = window.currentLog[i];
         totalCals += item.calories;
         totalC += item.vitc;
         totalA += item.vita;
         totalPot += item.pot;
         totalFib += item.fiber;
-      });
+      }
 
       const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
       const todayDay = days[new Date().getDay()];
 
-      window.weekHistory.push({
-        day: todayDay, calories: totalCals, vitc: totalC, vita: totalA, pot: totalPot, fiber: totalFib, water: 250, date: new Date().toISOString().split('T')[0]
-      });
+      const newLog = {
+        day: todayDay, 
+        calories: totalCals, 
+        vitc: totalC, 
+        vita: totalA, 
+        pot: totalPot, 
+        fiber: totalFib, 
+        water: 250, 
+        date: new Date().toISOString().split('T')[0]
+      };
+
+      window.weekHistory.push(newLog);
+
+      // Adjust rolling total in $O(1)$ time complexity dynamically
+      rollingTallies.calories += totalCals;
+      rollingTallies.vitc += totalC;
+      rollingTallies.vita += totalA;
+      rollingTallies.pot += totalPot;
+      rollingTallies.fiber += totalFib;
 
       window.weeklyHydrationTotal += 250;
       window.currentLog = [];
@@ -1266,14 +1356,17 @@
       saveToDB();
     }
 
+    // High performance UI drawing pipeline utilizing cached DOM elements
     function updateUI() {
-      const container = document.getElementById('logged-items-container');
-      const emptyState = document.getElementById('log-empty-state');
-      const badge = document.getElementById('log-count-badge');
-      const clearAllBtn = document.getElementById('clear-all-log-btn');
+      const container = DOM['logged-items-container'];
+      const emptyState = DOM['log-empty-state'];
+      const badge = DOM['log-count-badge'];
+      const clearAllBtn = DOM['clear-all-log-btn'];
+
+      const currentLogLen = window.currentLog.length;
 
       if (container && emptyState && badge && clearAllBtn) {
-        if (window.currentLog.length === 0) {
+        if (currentLogLen === 0) {
           container.innerHTML = '';
           emptyState.classList.remove('hidden');
           badge.innerText = '0 Items';
@@ -1281,48 +1374,51 @@
         } else {
           emptyState.classList.add('hidden');
           clearAllBtn.classList.remove('hidden');
-          badge.innerText = `${window.currentLog.length} Items`;
+          badge.innerText = `${currentLogLen} Item${currentLogLen > 1 ? 's' : ''}`;
 
-          container.innerHTML = window.currentLog.map(item => `
-            <div class="flex items-center justify-between p-3.5 bg-white/70 rounded-xl border border-white/50 shadow-sm slide-in">
-              <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-full ${item.class || 'bg-brand-surface-low'} flex items-center justify-center text-xl">${item.emoji}</div>
-                <div>
-                  <span class="font-display font-bold text-sm text-[#1b1c1a] block">${item.name}</span>
-                  <span class="text-xs text-[#5a4136]/80 font-medium">${item.standardUnit} • ${item.calories} kcal</span>
+          let buffer = '';
+          for (let i = 0; i < currentLogLen; i++) {
+            const item = window.currentLog[i];
+            buffer += `
+              <div class="flex items-center justify-between p-3.5 bg-white/70 rounded-xl border border-white/50 shadow-sm slide-in">
+                <div class="flex items-center gap-3">
+                  <div class="w-10 h-10 rounded-full ${item.class || 'bg-brand-surface-low'} flex items-center justify-center text-xl">${item.emoji}</div>
+                  <div>
+                    <span class="font-display font-bold text-sm text-[#1b1c1a] block">${item.name}</span>
+                    <span class="text-xs text-[#5a4136]/80 font-medium">${item.standardUnit} • ${item.calories} kcal</span>
+                  </div>
                 </div>
+                <button onclick="removeLogItem('${item.customId}')" class="text-[#8e7164] hover:text-brand-error p-1.5"><i data-lucide="x" class="w-4 h-4"></i></button>
               </div>
-              <button onclick="removeLogItem('${item.customId}')" class="text-[#8e7164] hover:text-brand-error p-1.5"><i data-lucide="x" class="w-4 h-4"></i></button>
-            </div>
-          `).join('');
+            `;
+          }
+          container.innerHTML = buffer;
         }
       }
 
-      const blenderContainer = document.getElementById('blender-layers-container');
+      const blenderContainer = DOM['blender-layers-container'];
       if (blenderContainer) {
-        if (window.currentLog.length === 0) {
+        if (currentLogLen === 0) {
           blenderContainer.innerHTML = `<div class="h-full w-full flex items-center justify-center text-[10px] text-gray-400 font-bold p-4">No ingredients loaded</div>`;
         } else {
-          blenderContainer.innerHTML = window.currentLog.map(item => {
-            const depthPercent = Math.max(15, 100 / window.currentLog.length);
-            return `<div class="w-full text-center text-[9px] font-bold text-white flex items-center justify-center relative" style="height: ${depthPercent}%; background-color: ${item.color || '#ff6b00'}; opacity: 0.85;"><span class="relative z-10">${item.emoji} ${item.name}</span></div>`;
-          }).reverse().join('');
+          let layersBuffer = '';
+          const depthPercent = Math.max(15, 100 / currentLogLen);
+          for (let i = currentLogLen - 1; i >= 0; i--) {
+            const item = window.currentLog[i];
+            layersBuffer += `<div class="w-full text-center text-[9px] font-bold text-white flex items-center justify-center relative" style="height: ${depthPercent}%; background-color: ${item.color || '#ff6b00'}; opacity: 0.85;"><span class="relative z-10">${item.emoji} ${item.name}</span></div>`;
+          }
+          blenderContainer.innerHTML = layersBuffer;
         }
       }
 
-      let accumulatedCal = 0, accumulatedVitC = 0, accumulatedVitA = 0, accumulatedPot = 0, accumulatedFiber = 0, totalGrams = 0;
-      window.weekHistory.forEach(dayLog => {
-        accumulatedCal += dayLog.calories;
-        accumulatedVitC += dayLog.vitc;
-        accumulatedVitA += dayLog.vita;
-        accumulatedPot += dayLog.pot;
-        accumulatedFiber += dayLog.fiber;
-      });
+      // Compute total grams with rolling loops
+      let totalGrams = 0;
+      for (let i = 0; i < currentLogLen; i++) {
+        totalGrams += window.currentLog[i].weight;
+      }
 
-      window.currentLog.forEach(item => { totalGrams += item.weight; });
-
-      safeSetText('dash-calories', `${Math.round(accumulatedCal)} kcal`);
-      safeSetText('dash-count', `${window.weekHistory.length + window.currentLog.length} items`);
+      safeSetText('dash-calories', `${Math.round(rollingTallies.calories)} kcal`);
+      safeSetText('dash-count', `${window.weekHistory.length + currentLogLen} items`);
       safeSetText('dash-hydration', `${window.weeklyHydrationTotal} ml`);
       safeSetText('total-consumed-weight', `${Math.round(totalGrams)}g`);
       safeSetText('total-water-est', `${Math.round(totalGrams * 0.85)}ml`);
@@ -1332,27 +1428,27 @@
       safeSetText('hydration-percentage-badge', `${hPercentage}% Weekly Goal`);
       safeSetStyleTransform('droplet-water-level', `translateY(${100 - hPercentage}%)`);
       
-      let baseScore = Math.min(100, Math.round((accumulatedVitC / WEEKLY_RDA.vitc) * 30 + (accumulatedVitA / WEEKLY_RDA.vita) * 30 + (accumulatedPot / WEEKLY_RDA.pot) * 20 + (window.weeklyHydrationTotal / window.userGoalHydration) * 20));
+      let baseScore = Math.min(100, Math.round((rollingTallies.vitc / WEEKLY_RDA.vitc) * 30 + (rollingTallies.vita / WEEKLY_RDA.vita) * 30 + (rollingTallies.pot / WEEKLY_RDA.pot) * 20 + (window.weeklyHydrationTotal / window.userGoalHydration) * 20));
       safeSetText('dash-score', isNaN(baseScore) ? '0 / 100' : `${baseScore} / 100`);
 
-      safeSetText('small-txt-pot', `${Math.round(accumulatedPot)} mg`);
-      safeSetStyleHeight('small-bar-pot', `${Math.min(100, (accumulatedPot / WEEKLY_RDA.pot) * 100)}%`);
+      safeSetText('small-txt-pot', `${Math.round(rollingTallies.pot)} mg`);
+      safeSetStyleHeight('small-bar-pot', `${Math.min(100, (rollingTallies.pot / WEEKLY_RDA.pot) * 100)}%`);
 
-      safeSetText('small-txt-vita', `${Math.round(accumulatedVitA)} mcg`);
-      safeSetStyleHeight('small-bar-vita', `${Math.min(100, (accumulatedVitA / WEEKLY_RDA.vita) * 100)}%`);
+      safeSetText('small-txt-vita', `${Math.round(rollingTallies.vita)} mcg`);
+      safeSetStyleHeight('small-bar-vita', `${Math.min(100, (rollingTallies.vita / WEEKLY_RDA.vita) * 100)}%`);
 
-      const vitCPercentage = Math.min(100, Math.round((accumulatedVitC / WEEKLY_RDA.vitc) * 100));
+      const vitCPercentage = Math.min(100, Math.round((rollingTallies.vitc / WEEKLY_RDA.vitc) * 100));
       safeSetText('central-percentage', `${vitCPercentage}%`);
-      safeSetText('central-calorie-track', `${Math.round(accumulatedVitC)} / ${WEEKLY_RDA.vitc} mg`);
+      safeSetText('central-calorie-track', `${Math.round(rollingTallies.vitc)} / ${WEEKLY_RDA.vitc} mg`);
       safeSetStyleStrokeDashoffset('central-progress-circle', 477 - (477 * vitCPercentage) / 100);
 
       safeSetText('header-vitc-prog', `${vitCPercentage}%`);
-      safeSetText('header-vita-prog', `${Math.round(Math.min(100, (accumulatedVitA / WEEKLY_RDA.vita) * 100))}%`);
+      safeSetText('header-vita-prog', `${Math.round(Math.min(100, (rollingTallies.vita / WEEKLY_RDA.vita) * 100))}%`);
       safeSetText('header-water-prog', `${hPercentage}%`);
 
-      const calculatedSkinGlow = Math.min(100, Math.round((window.weeklyHydrationTotal / window.userGoalHydration) * 60 + (accumulatedVitC / WEEKLY_RDA.vitc) * 40));
-      const calculatedImmune = Math.min(100, Math.round((accumulatedVitC / WEEKLY_RDA.vitc) * 80 + (accumulatedVitA / WEEKLY_RDA.vita) * 20));
-      const calculatedEnergy = Math.min(100, Math.round((window.weeklyHydrationTotal / window.userGoalHydration) * 40 + (accumulatedPot / WEEKLY_RDA.pot) * 60));
+      const calculatedSkinGlow = Math.min(100, Math.round((window.weeklyHydrationTotal / window.userGoalHydration) * 60 + (rollingTallies.vitc / WEEKLY_RDA.vitc) * 40));
+      const calculatedImmune = Math.min(100, Math.round((rollingTallies.vitc / WEEKLY_RDA.vitc) * 80 + (rollingTallies.vita / WEEKLY_RDA.vita) * 20));
+      const calculatedEnergy = Math.min(100, Math.round((window.weeklyHydrationTotal / window.userGoalHydration) * 40 + (rollingTallies.pot / WEEKLY_RDA.pot) * 60));
 
       safeSetText('skin-glow-percentage', `${calculatedSkinGlow}%`);
       safeSetStyleHeight('synthesis-vision', `${calculatedSkinGlow}%`);
@@ -1361,7 +1457,7 @@
       safeSetText('energy-percentage', `${calculatedEnergy}%`);
       safeSetStyleHeight('synthesis-energy', `${calculatedEnergy}%`);
 
-      const tipText = document.getElementById('synthesis-dynamic-tip');
+      const tipText = DOM['synthesis-dynamic-tip'];
       if (tipText) {
         if (calculatedSkinGlow < 40) {
           tipText.innerHTML = "💧 <strong>Hydration alert:</strong> Pour some alkaline water or coconut electrolytes to boost Vision & Skin Glow!";
@@ -1374,17 +1470,22 @@
       lucide.createIcons();
     }
 
+    // Debounced serialization saving to eliminate layout-jank on quick clicking
+    let saveDebounceTimer = null;
     function saveToDB() {
-      VitamixDB.set('current_log', window.currentLog);
-      VitamixDB.set('week_history', window.weekHistory);
-      VitamixDB.set('weekly_hydration', window.weeklyHydrationTotal);
-      VitamixDB.set('favorite_recipes', window.favoriteRecipes);
-      VitamixDB.set('user_goal_calories', window.userGoalCalories);
-      VitamixDB.set('user_goal_hydration', window.userGoalHydration);
-      VitamixDB.set('user_name', window.userName);
-      VitamixDB.set('user_age', window.userAge);
-      VitamixDB.set('user_gender', window.userGender);
-      updateBackupPayload();
+      if (saveDebounceTimer) clearTimeout(saveDebounceTimer);
+      saveDebounceTimer = setTimeout(() => {
+        VitamixDB.set('current_log', window.currentLog);
+        VitamixDB.set('week_history', window.weekHistory);
+        VitamixDB.set('weekly_hydration', window.weeklyHydrationTotal);
+        VitamixDB.set('favorite_recipes', window.favoriteRecipes);
+        VitamixDB.set('user_goal_calories', window.userGoalCalories);
+        VitamixDB.set('user_goal_hydration', window.userGoalHydration);
+        VitamixDB.set('user_name', window.userName);
+        VitamixDB.set('user_age', window.userAge);
+        VitamixDB.set('user_gender', window.userGender);
+        updateBackupPayload();
+      }, 150);
     }
 
     function simulateBlendAction() {
@@ -1392,7 +1493,7 @@
         triggerToast("Bowl is empty!");
         return;
       }
-      const cup = document.getElementById('blender-layers-container');
+      const cup = DOM['blender-layers-container'];
       if (cup) {
         cup.classList.add('animate-ping');
         setTimeout(() => {
@@ -1403,18 +1504,23 @@
     }
 
     function renderWeeklyDistribution() {
-      const parent = document.getElementById('weekly-days-bars');
+      const parent = DOM['weekly-days-bars'];
       if (!parent) return;
 
       const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
       let dayMap = { Mon: 0, Tue: 0, Wed: 0, Thu: 0, Fri: 0, Sat: 0, Sun: 0 };
-      window.weekHistory.forEach(item => { if (dayMap[item.day] !== undefined) dayMap[item.day] += item.calories; });
+      for (let i = 0; i < window.weekHistory.length; i++) {
+        const item = window.weekHistory[i];
+        if (dayMap[item.day] !== undefined) dayMap[item.day] += item.calories;
+      }
 
       const maxVal = Math.max(...Object.values(dayMap), 100);
 
-      parent.innerHTML = days.map(d => {
+      let buffer = '';
+      for (let i = 0; i < days.length; i++) {
+        const d = days[i];
         const heightPercent = Math.max(10, (dayMap[d] / maxVal) * 100);
-        return `
+        buffer += `
           <div class="flex flex-col items-center justify-end h-32 space-y-2">
             <span class="text-[9px] font-bold text-brand-primary">${dayMap[d] > 0 ? dayMap[d] + 'c' : ''}</span>
             <div class="w-4 rounded-full relative bg-gray-100 h-24 overflow-hidden">
@@ -1423,11 +1529,12 @@
             <span class="text-[10px] font-bold text-[#5a4136]">${d}</span>
           </div>
         `;
-      }).join('');
+      }
+      parent.innerHTML = buffer;
     }
 
     function renderLibraryCatalog(filter) {
-      const container = document.getElementById('library-fruit-catalog');
+      const container = DOM['library-fruit-catalog'];
       if (!container) return;
 
       let list = Object.values(window.FRUIT_DATABASE);
@@ -1437,19 +1544,31 @@
         list = list.filter(item => item.pot >= 230);
       }
 
-      container.innerHTML = list.map(item => `
-        <div class="glass-card rounded-2xl p-4 flex gap-4 hover:shadow-md transition-all duration-300 relative overflow-hidden">
-          <div class="w-16 h-16 rounded-2xl ${item.class} flex items-center justify-center text-3xl self-center">${item.emoji}</div>
-          <div class="flex-1 space-y-1 text-xs">
-            <div class="flex justify-between items-center">
-              <h4 class="font-display font-extrabold text-sm text-brand-on-surface">${item.name}</h4>
-              <span class="bg-brand-surface-low text-brand-on-surface-variant font-bold px-2 py-0.5 rounded text-[10px]">${item.category}</span>
+      let buffer = '';
+      for (let i = 0; i < list.length; i++) {
+        const item = list[i];
+        let activeBoost = false;
+        if (currentSeason === 'spring' && (item.id === 'orange' || item.id === 'kiwi')) activeBoost = true;
+        if (currentSeason === 'summer' && (item.id === 'berries' || item.id === 'strawberry')) activeBoost = true;
+        if (currentSeason === 'autumn' && item.id === 'apple') activeBoost = true;
+        if (currentSeason === 'winter' && (item.id === 'mango' || item.id === 'avocado')) activeBoost = true;
+
+        buffer += `
+          <div class="glass-card rounded-2xl p-4 flex gap-4 hover:shadow-md transition-all duration-300 relative overflow-hidden ${activeBoost ? 'border-brand-primary/40 bg-orange-50/10' : ''}">
+            ${activeBoost ? `<span class="absolute top-0 right-0 bg-brand-primary text-white text-[8px] font-extrabold px-1.5 py-0.5 rounded-bl-lg uppercase tracking-widest">BOOSTED</span>` : ''}
+            <div class="w-16 h-16 rounded-2xl ${item.class} flex items-center justify-center text-3xl self-center">${item.emoji}</div>
+            <div class="flex-1 space-y-1 text-xs">
+              <div class="flex justify-between items-center">
+                <h4 class="font-display font-extrabold text-sm text-brand-on-surface">${item.name}</h4>
+                <span class="bg-brand-surface-low text-brand-on-surface-variant font-bold px-2 py-0.5 rounded text-[10px]">${item.category}</span>
+              </div>
+              <p class="text-[11px] text-[#5a4136] leading-snug">${item.benefits}</p>
+              <button onclick="addFruitToLog('${item.id}')" class="mt-2 text-[10px] font-extrabold text-brand-primary hover:underline">Add Serve +</button>
             </div>
-            <p class="text-[11px] text-[#5a4136] leading-snug">${item.benefits}</p>
-            <button onclick="addFruitToLog('${item.id}')" class="mt-2 text-[10px] font-extrabold text-brand-primary hover:underline">Add Serve +</button>
           </div>
-        </div>
-      `).join('');
+        `;
+      }
+      container.innerHTML = buffer;
     }
 
     function filterLibrary(filter) {
@@ -1464,68 +1583,100 @@
     }
 
     function renderWeeklyHistoryList() {
-      const container = document.getElementById('weekly-history-list');
+      const container = DOM['weekly-history-list'];
       if (!container) return;
 
-      if (window.weekHistory.length === 0) {
+      const len = window.weekHistory.length;
+      if (len === 0) {
         container.innerHTML = `<p class="text-gray-400 italic text-center py-4">No historical records found. Complete your first log!</p>`;
         return;
       }
 
-      container.innerHTML = window.weekHistory.map((item, index) => `
-        <div class="flex items-center justify-between p-2.5 bg-white/40 rounded-xl border border-white/30">
-          <div><span class="font-bold text-[#1b1c1a] block">Blend Log #${index + 1} (${item.day})</span><span class="text-gray-500 text-[10px]">${item.date}</span></div>
-          <div class="text-right font-medium"><span class="text-brand-primary block">${item.calories} kcal</span><span class="text-[10px] text-gray-400">C: ${item.vitc}mg | Fib: ${item.fiber}g</span></div>
-        </div>
-      `).reverse().join('');
+      let buffer = '';
+      for (let i = len - 1; i >= 0; i--) {
+        const item = window.weekHistory[i];
+        buffer += `
+          <div class="flex items-center justify-between p-2.5 bg-white/40 rounded-xl border border-white/30">
+            <div><span class="font-bold text-[#1b1c1a] block">Blend Log #${i + 1} (${item.day})</span><span class="text-gray-500 text-[10px]">${item.date}</span></div>
+            <div class="text-right font-medium"><span class="text-brand-primary block">${item.calories} kcal</span><span class="text-[10px] text-gray-400">C: ${item.vitc}mg | Fib: ${item.fiber}g</span></div>
+          </div>
+        `;
+      }
+      container.innerHTML = buffer;
     }
 
     function renderInsightsGauges() {
-      let accumulatedCal = 0, accumulatedVitC = 0, accumulatedVitA = 0, accumulatedPot = 0, accumulatedFiber = 0;
-      window.weekHistory.forEach(dayLog => {
-        accumulatedCal += dayLog.calories;
-        accumulatedVitC += dayLog.vitc;
-        accumulatedVitA += dayLog.vita;
-        accumulatedPot += dayLog.pot;
-        accumulatedFiber += dayLog.fiber;
-      });
-
-      const calPercentage = Math.min(100, Math.round((accumulatedCal / window.userGoalCalories) * 100));
+      const calPercentage = Math.min(100, Math.round((rollingTallies.calories / window.userGoalCalories) * 100));
       safeSetText('insights-calorie-text', `${calPercentage}%`);
-      safeSetText('insights-calorie-subtitle', `${Math.round(accumulatedCal)} / ${window.userGoalCalories} kcal consumed`);
+      safeSetText('insights-calorie-subtitle', `${Math.round(rollingTallies.calories)} / ${window.userGoalCalories} kcal consumed`);
       safeSetStyleStrokeDashoffset('insights-calorie-circle', 377 - (377 * calPercentage) / 100);
 
-      safeSetText('prog-txt-vitc', `${Math.round(accumulatedVitC)} / ${WEEKLY_RDA.vitc} mg`);
-      safeSetStyleHeight('prog-bar-vitc', `${Math.min(100, (accumulatedVitC / WEEKLY_RDA.vitc) * 100)}%`);
+      safeSetText('prog-txt-vitc', `${Math.round(rollingTallies.vitc)} / ${WEEKLY_RDA.vitc} mg`);
+      safeSetStyleHeight('prog-bar-vitc', `${Math.min(100, (rollingTallies.vitc / WEEKLY_RDA.vitc) * 100)}%`);
 
-      safeSetText('prog-txt-vita', `${Math.round(accumulatedVitA)} / ${WEEKLY_RDA.vita} mcg`);
-      safeSetStyleHeight('prog-bar-vita', `${Math.min(100, (accumulatedVitA / WEEKLY_RDA.vita) * 100)}%`);
+      safeSetText('prog-txt-vita', `${Math.round(rollingTallies.vita)} / ${WEEKLY_RDA.vita} mcg`);
+      safeSetStyleHeight('prog-bar-vita', `${Math.min(100, (rollingTallies.vita / WEEKLY_RDA.vita) * 100)}%`);
 
-      safeSetText('prog-txt-pot', `${Math.round(accumulatedPot)} / ${WEEKLY_RDA.pot} mg`);
-      safeSetStyleHeight('prog-bar-pot', `${Math.min(100, (accumulatedPot / WEEKLY_RDA.pot) * 100)}%`);
+      safeSetText('prog-txt-pot', `${Math.round(rollingTallies.pot)} / ${WEEKLY_RDA.pot} mg`);
+      safeSetStyleHeight('prog-bar-pot', `${Math.min(100, (rollingTallies.pot / WEEKLY_RDA.pot) * 100)}%`);
 
-      safeSetText('prog-txt-fiber', `${Math.round(accumulatedFiber)} / ${WEEKLY_RDA.fiber} g`);
-      safeSetStyleHeight('prog-bar-fiber', `${Math.min(100, (accumulatedFiber / WEEKLY_RDA.fiber) * 100)}%`);
+      safeSetText('prog-txt-fiber', `${Math.round(rollingTallies.fiber)} / ${WEEKLY_RDA.fiber} g`);
+      safeSetStyleHeight('prog-bar-fiber', `${Math.min(100, (rollingTallies.fiber / WEEKLY_RDA.fiber) * 100)}%`);
     }
 
+    // $O(1)$ prefix key matching search logic
     function handleSearch(query) {
-      const container = document.getElementById('library-fruit-catalog');
+      const container = DOM['library-fruit-catalog'];
       if (!query.trim()) {
         renderLibraryCatalog('all');
         return;
       }
-      const results = Object.values(window.FRUIT_DATABASE).filter(f => f.name.toLowerCase().includes(query.toLowerCase()));
+      
+      const cleanQuery = query.toLowerCase().trim();
+      const tokens = cleanQuery.split(/\s+/);
+      const resultSet = new Set();
+
+      // Find matches using pre-computed token index keys
+      const indexKeys = Object.keys(searchTokenIndex);
+      for (let t = 0; t < tokens.length; t++) {
+        const token = tokens[t];
+        for (let i = 0; i < indexKeys.length; i++) {
+          if (indexKeys[i].startsWith(token)) {
+            const ids = searchTokenIndex[indexKeys[i]];
+            for (let j = 0; j < ids.length; j++) {
+              resultSet.add(ids[j]);
+            }
+          }
+        }
+      }
+
       if (container) {
-        container.innerHTML = results.map(item => `
-          <div class="glass-card rounded-2xl p-4 flex gap-4 hover:shadow-md">
-            <div class="w-16 h-16 rounded-2xl ${item.class} flex items-center justify-center text-3xl">${item.emoji}</div>
-            <div class="flex-1 text-xs">
-              <h4 class="font-extrabold text-brand-on-surface">${item.name}</h4>
-              <p class="text-[11px] leading-snug">${item.benefits}</p>
-              <button onclick="addFruitToLog('${item.id}')" class="mt-2 text-brand-primary font-bold">Add Serve +</button>
+        if (resultSet.size === 0) {
+          container.innerHTML = `
+            <div class="col-span-2 text-center py-12">
+              <span class="text-3xl">🏜️</span>
+              <p class="text-xs text-brand-on-surface-variant mt-2 font-semibold">No organic items match your search.</p>
+              <p class="text-[11px] text-gray-400">Try searching "Vitamin", "Citrus" or "Apple".</p>
             </div>
-          </div>
-        `).join('');
+          `;
+          return;
+        }
+
+        let buffer = '';
+        resultSet.forEach(id => {
+          const item = window.FRUIT_DATABASE[id];
+          buffer += `
+            <div class="glass-card rounded-2xl p-4 flex gap-4 hover:shadow-md">
+              <div class="w-16 h-16 rounded-2xl ${item.class} flex items-center justify-center text-3xl">${item.emoji}</div>
+              <div class="flex-1 text-xs">
+                <h4 class="font-extrabold text-brand-on-surface">${item.name}</h4>
+                <p class="text-[11px] leading-snug">${item.benefits}</p>
+                <button onclick="addFruitToLog('${item.id}')" class="mt-2 text-brand-primary font-bold">Add Serve +</button>
+              </div>
+            </div>
+          `;
+        });
+        container.innerHTML = buffer;
       }
     }
 
@@ -1535,7 +1686,6 @@
       renderLibraryCatalog('all');
     }
 
-    // Modal viewcontrollers
     function toggleInfoModal(show) {
       const el = document.getElementById('info-modal');
       if (el) el.classList.toggle('hidden', !show);
@@ -1584,9 +1734,11 @@
         triggerToast("Backup payload copied to clipboard!");
       }).catch(() => {
         const el = document.getElementById('sync-key-display');
-        el.select();
-        document.execCommand('copy');
-        triggerToast("Backup payload copied!");
+        if (el) {
+          el.select();
+          document.execCommand('copy');
+          triggerToast("Backup payload copied!");
+        }
       });
     }
 
@@ -1609,9 +1761,10 @@
         window.userAge = decoded.userAge || 28;
         window.userGender = decoded.userGender || "male";
 
+        recomputeRollingTotals();
         saveToDB();
         
-        // sync views
+        // Sync values to DOM forms
         const nameInput = document.getElementById('user-name');
         if (nameInput) nameInput.value = window.userName;
         const ageInput = document.getElementById('user-age');
@@ -1636,6 +1789,7 @@
     function clearTotalHistory() {
       window.weekHistory = [];
       window.weeklyHydrationTotal = 0;
+      recomputeRollingTotals();
       updateUI();
       renderWeeklyDistribution();
       renderWeeklyHistoryList();
@@ -1652,11 +1806,34 @@
       switchTab('library', document.querySelector('.nav-tab-btn:nth-child(2)'));
     }
 
-    function safeSetText(id, value) { const el = document.getElementById(id); if (el) el.style.display = 'none'; if (el) el.innerText = value; if (el) el.style.display = ''; }
-    function safeSetStyleHeight(id, height) { const el = document.getElementById(id); if (el) el.style.height = height; }
-    function safeSetStyleStrokeDashoffset(id, offset) { const el = document.getElementById(id); if (el) el.style.strokeDashoffset = offset; }
-    function safeSetStyleTransform(id, transformVal) { const el = document.getElementById(id); if (el) el.style.transform = transformVal; }
-    function triggerToast(m) { const t = document.getElementById('toast-message'), x = document.getElementById('toast-text'); if (t && x) { x.innerText = m; t.classList.remove('translate-y-[-100px]', 'opacity-0'); t.classList.add('translate-y-0', 'opacity-100'); setTimeout(() => { t.classList.add('translate-y-[-100px]', 'opacity-0'); t.classList.remove('translate-y-0', 'opacity-100'); }, 3500); } }
+    function safeSetText(id, value) { 
+      const el = DOM[id]; 
+      if (el) el.innerText = value; 
+    }
+    function safeSetStyleHeight(id, height) { 
+      const el = DOM[id]; 
+      if (el) el.style.height = height; 
+    }
+    function safeSetStyleStrokeDashoffset(id, offset) { 
+      const el = DOM[id]; 
+      if (el) el.style.strokeDashoffset = offset; 
+    }
+    function safeSetStyleTransform(id, transformVal) { 
+      const el = DOM[id]; 
+      if (el) el.style.transform = transformVal; 
+    }
+    function triggerToast(m) { 
+      const t = document.getElementById('toast-message'), x = document.getElementById('toast-text'); 
+      if (t && x) { 
+        x.innerText = m; 
+        t.classList.remove('translate-y-[-100px]', 'opacity-0'); 
+        t.classList.add('translate-y-0', 'opacity-100'); 
+        setTimeout(() => { 
+          t.classList.add('translate-y-[-100px]', 'opacity-0'); 
+          t.classList.remove('translate-y-0', 'opacity-100'); 
+        }, 3500); 
+      } 
+    }
   </script>
 
 </body>
