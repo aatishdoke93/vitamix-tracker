@@ -1,0 +1,1663 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Vitamix — Fruit, Hydration & Vitamin Tracker</title>
+  
+  <!-- Mobile PWA Theme Customizer -->
+  <meta name="theme-color" content="#a04100">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  
+  <!-- Tailwind Color Customization matching DESIGN.md -->
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              surface: '#faf9f5',
+              'surface-dim': '#dbdad6',
+              'surface-bright': '#faf9f5',
+              'surface-lowest': '#ffffff',
+              'surface-low': '#f4f4f0',
+              'surface-container': '#efeeea',
+              'surface-high': '#e9e8e4',
+              'surface-highest': '#e3e2df',
+              'on-surface': '#1b1c1a',
+              'on-surface-variant': '#5a4136',
+              'inverse-surface': '#2f312e',
+              'inverse-on-surface': '#f2f1ed',
+              outline: '#8e7164',
+              'outline-variant': '#e2bfb0',
+              'surface-tint': '#a04100',
+              primary: '#a04100',
+              'on-primary': '#ffffff',
+              'primary-container': '#ff6b00',
+              'on-primary-container': '#572000',
+              'inverse-primary': '#ffb693',
+              secondary: '#8429c8',
+              'on-secondary': '#ffffff',
+              'secondary-container': '#9e49e3',
+              'on-secondary-container': '#fffbff',
+              tertiary: '#006780',
+              'on-tertiary': '#ffffff',
+              'tertiary-container': '#06a6cc',
+              'on-tertiary-container': '#003644',
+              error: '#ba1a1a',
+              'on-error': '#ffffff',
+              'error-container': '#ffdad6',
+              'on-error-container': '#93000a',
+              accent: '#84cc16'
+            }
+          },
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            display: ['Plus Jakarta Sans', 'sans-serif']
+          },
+          borderRadius: {
+            'sm': '0.25rem',
+            'DEFAULT': '0.5rem',
+            'md': '0.75rem',
+            'lg': '1rem',
+            'xl': '1.5rem',
+            'full': '9999px'
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    /* Native Mobile Scroll & Overpull Overrides */
+    body {
+      overscroll-behavior-y: contain; /* Disables pull-to-refresh on mobile chrome */
+      -webkit-tap-highlight-color: transparent;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+    
+    input, select, textarea {
+      -webkit-user-select: text;
+      user-select: text;
+    }
+
+    .mobile-header {
+      padding-top: calc(env(safe-area-inset-top) + 0.75rem);
+    }
+    
+    .mobile-footer-nav {
+      padding-bottom: calc(env(safe-area-inset-bottom) + 0.75rem);
+    }
+
+    /* Premium Glassmorphic Effects matching Vitamix Design Tokens */
+    .glass-card {
+      background: rgba(255, 255, 255, 0.65);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.45);
+      box-shadow: 0 8px 32px 0 rgba(142, 113, 100, 0.08);
+      transition: background 0.5s ease, border 0.5s ease;
+    }
+    
+    .glass-card-dark {
+      background: rgba(47, 49, 46, 0.85);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.15);
+    }
+
+    .glass-modal {
+      background: rgba(255, 255, 255, 0.85);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      border: 1px solid rgba(255, 255, 255, 0.6);
+    }
+
+    /* Ambient Blurred Glowing Backgrounds */
+    .ambient-glow-1, .ambient-glow-2, .ambient-glow-3 {
+      position: absolute;
+      filter: blur(45px);
+      z-index: 0;
+      pointer-events: none;
+      transition: background 0.8s ease, transform 0.8s ease, width 0.8s ease, height 0.8s ease;
+    }
+
+    .ambient-glow-1 { width: 350px; height: 350px; top: -50px; left: -50px; }
+    .ambient-glow-2 { width: 400px; height: 400px; bottom: 100px; right: -100px; }
+    .ambient-glow-3 { width: 300px; height: 300px; top: 40%; left: 15%; }
+
+    /* Climate Themes */
+    .season-spring-g1 { background: radial-gradient(circle, rgba(255, 107, 0, 0.18) 0%, rgba(255,255,255,0) 70%); }
+    .season-spring-g2 { background: radial-gradient(circle, rgba(244, 143, 177, 0.18) 0%, rgba(255,255,255,0) 70%); }
+    .season-spring-g3 { background: radial-gradient(circle, rgba(160, 65, 0, 0.15) 0%, rgba(255,255,255,0) 70%); }
+
+    .season-summer-g1 { background: radial-gradient(circle, rgba(132, 41, 200, 0.18) 0%, rgba(255,255,255,0) 70%); }
+    .season-summer-g2 { background: radial-gradient(circle, rgba(255, 45, 85, 0.18) 0%, rgba(255,255,255,0) 70%); }
+    .season-summer-g3 { background: radial-gradient(circle, rgba(255, 149, 0, 0.15) 0%, rgba(255,255,255,0) 70%); }
+
+    .season-autumn-g1 { background: radial-gradient(circle, rgba(160, 65, 0, 0.22) 0%, rgba(255,255,255,0) 70%); }
+    .season-autumn-g2 { background: radial-gradient(circle, rgba(255, 179, 0, 0.2) 0%, rgba(255,255,255,0) 70%); }
+    .season-autumn-g3 { background: radial-gradient(circle, rgba(142, 113, 100, 0.18) 0%, rgba(255,255,255,0) 70%); }
+
+    .season-winter-g1 { background: radial-gradient(circle, rgba(6, 166, 204, 0.18) 0%, rgba(255,255,255,0) 70%); }
+    .season-winter-g2 { background: radial-gradient(circle, rgba(132, 41, 200, 0.15) 0%, rgba(255,255,255,0) 70%); }
+    .season-winter-g3 { background: radial-gradient(circle, rgba(88, 86, 214, 0.18) 0%, rgba(255,255,255,0) 70%); }
+
+    /* Keyframe Animations */
+    .slide-in { animation: slideInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+    .scale-up { animation: scaleUp 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
+    .water-wave { animation: wave 4s ease-in-out infinite alternate; }
+
+    @keyframes slideInUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    @keyframes scaleUp { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+    @keyframes wave { 0% { transform: translateY(2px) skewX(-2deg); } 100% { transform: translateY(-2px) skewX(2deg); } }
+    .pulse-glow { animation: pulse 2s infinite; }
+    @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(160, 65, 0, 0.4); } 70% { box-shadow: 0 0 0 10px rgba(160, 65, 0, 0); } 100% { box-shadow: 0 0 0 0 rgba(160, 65, 0, 0); } }
+  </style>
+</head>
+<body class="bg-[#faf9f5] text-[#1b1c1a] font-sans antialiased min-h-screen relative overflow-x-hidden selection:bg-[#ffdbcc]">
+
+  <!-- Ambient Dynamic Colored Elements -->
+  <div id="glow-1" class="ambient-glow-1 season-spring-g1"></div>
+  <div id="glow-2" class="ambient-glow-2 season-spring-g2"></div>
+  <div id="glow-3" class="ambient-glow-3 season-spring-g3"></div>
+
+  <!-- MAIN WINDOW SCENE -->
+  <div class="min-h-screen flex flex-col justify-between max-w-7xl mx-auto px-4 md:px-8 relative z-10 py-4 lg:py-8">
+    
+    <!-- HEADER -->
+    <header class="w-full flex items-center justify-between mb-6 lg:mb-8 bg-white/40 backdrop-blur-md px-4 py-3 rounded-xl border border-white/40 shadow-sm mobile-header">
+      <div class="flex items-center gap-2">
+        <div class="w-10 h-10 rounded-full bg-gradient-to-br from-brand-primary-container to-brand-primary flex items-center justify-center text-white shadow-md">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m0-12.728l.707.707m12.728 12.728l.707.707M12 8a4 4 0 100 8 4 4 0 000-8z" />
+          </svg>
+        </div>
+        <div>
+          <span class="font-display font-extrabold text-2xl tracking-tight text-brand-primary">Vitamix</span>
+          <span class="text-xs block text-[#5a4136] font-medium tracking-wide">CLOUD SYSTEM</span>
+        </div>
+      </div>
+
+      <!-- Sync Status Badge -->
+      <div class="flex items-center gap-2 bg-emerald-50 text-emerald-800 border border-emerald-200/50 px-3 py-1.5 rounded-full text-xs font-semibold">
+        <span id="sync-indicator-dot" class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+        <span id="sync-status">Local Sync Active</span>
+      </div>
+
+      <!-- Header Action Elements -->
+      <div class="flex items-center gap-3">
+        <!-- Seasonal Switcher (Feature 5) -->
+        <div class="relative group">
+          <button id="season-btn" onclick="toggleSeasonDropdown()" class="flex items-center gap-1.5 px-3 py-2 bg-white/80 hover:bg-white rounded-xl border border-[#e3e2df] text-xs font-bold text-brand-on-surface transition-all shadow-sm">
+            <span id="season-emoji">🌸</span> <span id="season-lbl">Spring Pulse</span>
+            <i data-lucide="chevron-down" class="w-3 h-3 text-brand-on-surface-variant"></i>
+          </button>
+          
+          <div id="season-dropdown" class="absolute right-0 mt-2 w-48 bg-white/95 backdrop-blur-xl border border-white/60 rounded-xl shadow-2xl p-2 hidden z-50 transition-all duration-300">
+            <p class="text-[10px] font-extrabold text-brand-outline tracking-wider px-2 py-1 uppercase">Active Season Pulse</p>
+            <button onclick="setSeason('spring')" class="w-full flex items-center gap-2 px-2.5 py-2 text-left text-xs font-semibold rounded-lg hover:bg-orange-50 transition-colors">
+              <span>🌸</span> Spring Citrus <span class="text-[9px] text-orange-600 ml-auto">+20% Vit C</span>
+            </button>
+            <button onclick="setSeason('summer')" class="w-full flex items-center gap-2 px-2.5 py-2 text-left text-xs font-semibold rounded-lg hover:bg-purple-50 transition-colors">
+              <span>☀️</span> Summer Berries <span class="text-[9px] text-purple-600 ml-auto">+30% Antiox</span>
+            </button>
+            <button onclick="setSeason('autumn')" class="w-full flex items-center gap-2 px-2.5 py-2 text-left text-xs font-semibold rounded-lg hover:bg-amber-50 transition-colors">
+              <span>🍁</span> Autumn Orchard <span class="text-[9px] text-amber-600 ml-auto">+20% Fiber</span>
+            </button>
+            <button onclick="setSeason('winter')" class="w-full flex items-center gap-2 px-2.5 py-2 text-left text-xs font-semibold rounded-lg hover:bg-sky-50 transition-colors">
+              <span>❄️</span> Winter Vitality <span class="text-[9px] text-sky-600 ml-auto">+20% Vit A</span>
+            </button>
+          </div>
+        </div>
+
+        <button onclick="toggleInfoModal(true)" class="p-2.5 rounded-full bg-white hover:bg-brand-surface-low border border-[#e3e2df] text-brand-on-surface transition-all duration-200 shadow-sm">
+          <i data-lucide="help-circle" class="w-5 h-5 text-brand-tertiary"></i>
+        </button>
+      </div>
+    </header>
+
+    <!-- MAIN GRID BOX -->
+    <main class="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start flex-1 mb-24">
+      
+      <!-- LEFT AREA (TABS SCENES) -->
+      <section class="col-span-1 lg:col-span-8 space-y-6">
+        
+        <!-- ================= TAB 1: LOGGER ================= -->
+        <div id="tab-content-logger" class="tab-pane slide-in space-y-6">
+          
+          <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <h1 class="font-display font-extrabold text-3xl md:text-4xl text-brand-on-surface tracking-tight">Log Your Vitamix</h1>
+              <p class="text-brand-on-surface-variant font-sans text-base mt-2">Combine organic ingredients inside your companion blender bowl.</p>
+            </div>
+            <div id="season-announcement-banner" class="flex items-center gap-2 bg-[#ff6b00]/10 border border-[#ff6b00]/20 px-3.5 py-2 rounded-xl text-xs font-medium text-brand-on-surface-variant">
+              <span class="text-lg">🌸</span>
+              <div>
+                <span class="font-bold text-[#1b1c1a] block">Spring Citrus Active</span>
+                <span class="text-[10px] text-brand-primary">Oranges & Kiwis get +20% Vitamin C yield!</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Search Input (Exactly matches search from screen.jpg mockup) -->
+          <div class="relative scale-up">
+            <span class="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none">
+              <i data-lucide="search" class="w-5 h-5 text-[#8e7164]"></i>
+            </span>
+            <input type="text" id="fruit-search-input" oninput="handleSearch(this.value)" placeholder="Search for fruits, vitamins or blends..." class="w-full bg-[#f4f4f0] hover:bg-[#efeeea] focus:bg-white text-brand-on-surface font-sans text-base pl-12 pr-4 py-3.5 rounded-xl border border-[#e3e2df] focus:border-brand-primary focus:ring-1 focus:ring-brand-primary outline-none transition-all duration-300 placeholder:text-brand-on-surface-variant/60 shadow-inner">
+            <button id="clear-search-btn" onclick="clearSearch()" class="hidden absolute inset-y-0 right-0 flex items-center pr-4 text-brand-on-surface-variant hover:text-brand-primary">
+              <i data-lucide="x" class="w-5 h-5"></i>
+            </button>
+          </div>
+
+          <!-- Quick Pick Grid Card -->
+          <div class="glass-card rounded-2xl p-6 relative overflow-hidden">
+            <div class="flex items-center justify-between mb-4">
+              <h3 class="font-display font-bold text-lg text-brand-on-surface">Quick Pick</h3>
+              <button onclick="showAllQuickPicks()" class="text-xs font-semibold text-brand-primary hover:underline flex items-center gap-1">
+                See All <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i>
+              </button>
+            </div>
+
+            <!-- Quick pick grid mirroring original layout of screen.jpg -->
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-4" id="quick-pick-grid">
+              <!-- Fruit 1: Apple -->
+              <button onclick="addFruitToLog('apple')" class="flex flex-col items-center justify-center p-4 bg-white/70 hover:bg-white border border-white/50 hover:border-brand-primary/30 rounded-2xl shadow-sm hover:shadow transition-all duration-300 group relative">
+                <span id="seasonal-indicator-apple" class="hidden absolute top-2 right-2 text-xs">✨</span>
+                <div class="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform duration-300">
+                  <span class="text-2xl">🍎</span>
+                </div>
+                <span class="font-display font-semibold text-sm text-[#1b1c1a]">Apple</span>
+                <span class="text-[10px] text-gray-500 mt-1" id="apple-desc-stat">Fiber & Vit C</span>
+              </button>
+
+              <!-- Fruit 2: Banana -->
+              <button onclick="addFruitToLog('banana')" class="flex flex-col items-center justify-center p-4 bg-white/70 hover:bg-white border border-white/50 hover:border-brand-primary/30 rounded-2xl shadow-sm hover:shadow transition-all duration-300 group relative">
+                <span id="seasonal-indicator-banana" class="hidden absolute top-2 right-2 text-xs">✨</span>
+                <div class="w-12 h-12 rounded-full bg-yellow-100 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform duration-300">
+                  <span class="text-2xl">🍌</span>
+                </div>
+                <span class="font-display font-semibold text-sm text-[#1b1c1a]">Banana</span>
+                <span class="text-[10px] text-gray-500 mt-1" id="banana-desc-stat">Potassium</span>
+              </button>
+
+              <!-- Fruit 3: Orange -->
+              <button onclick="addFruitToLog('orange')" class="flex flex-col items-center justify-center p-4 bg-white/70 hover:bg-white border border-white/50 hover:border-brand-primary/30 rounded-2xl shadow-sm hover:shadow transition-all duration-300 group relative">
+                <span id="seasonal-indicator-orange" class="absolute top-2 right-2 text-xs">✨</span>
+                <div class="w-12 h-12 rounded-full bg-orange-100 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform duration-300">
+                  <span class="text-2xl">🍊</span>
+                </div>
+                <span class="font-display font-semibold text-sm text-[#1b1c1a]">Orange</span>
+                <span class="text-[10px] text-gray-500 mt-1" id="orange-desc-stat">High Vit C</span>
+              </button>
+
+              <!-- Fruit 4: Berries -->
+              <button onclick="addFruitToLog('berries')" class="flex flex-col items-center justify-center p-4 bg-white/70 hover:bg-white border border-white/50 hover:border-brand-primary/30 rounded-2xl shadow-sm hover:shadow transition-all duration-300 group relative">
+                <span id="seasonal-indicator-berries" class="hidden absolute top-2 right-2 text-xs">✨</span>
+                <div class="w-12 h-12 rounded-full bg-purple-100 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform duration-300">
+                  <span class="text-2xl">🍇</span>
+                </div>
+                <span class="font-display font-semibold text-sm text-[#1b1c1a]">Berries</span>
+                <span class="text-[10px] text-gray-500 mt-1" id="berries-desc-stat">Antioxidants</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Tri-Action Row: Custom Fruit, Blend Lab Recipe Creator, and favorites presets -->
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <button onclick="openCustomLogModal()" class="glass-card hover:bg-white/80 border border-white/60 p-5 rounded-2xl text-center flex flex-col items-center justify-center group transition-all duration-300 min-h-[160px]">
+              <div class="w-11 h-11 rounded-full bg-brand-primary-fixed flex items-center justify-center mb-3 text-brand-primary group-hover:scale-110 transition-transform duration-300">
+                <i data-lucide="plus" class="w-5 h-5"></i>
+              </div>
+              <span class="font-display font-bold text-lg text-[#5a4136]">Custom Fruit</span>
+              <p class="text-xs text-brand-on-surface-variant/80 mt-1">Log unique individual metrics</p>
+            </button>
+
+            <button onclick="openBlendLabModal()" class="glass-card hover:bg-white/80 border border-[#8429c8]/20 p-5 rounded-2xl text-center flex flex-col items-center justify-center group transition-all duration-300 min-h-[160px] relative overflow-hidden bg-gradient-to-br from-white/70 to-[#f2daff]/30">
+              <span class="absolute top-2 right-2 bg-brand-secondary text-white text-[8px] font-extrabold px-1.5 py-0.5 rounded-full uppercase tracking-wider">NEW</span>
+              <div class="w-11 h-11 rounded-full bg-purple-100 text-brand-secondary flex items-center justify-center mb-3 group-hover:scale-110 transition-transform duration-300">
+                <i data-lucide="beaker" class="w-5 h-5"></i>
+              </div>
+              <span class="font-display font-bold text-lg text-[#5a4136]">Blend Lab 🧪</span>
+              <p class="text-xs text-brand-on-surface-variant/80 mt-1">Custom recipe creator</p>
+            </button>
+
+            <!-- Favorites & Dynamic Saved Recipes section -->
+            <div class="glass-card p-5 rounded-2xl flex flex-col justify-between">
+              <div class="flex items-center gap-2 mb-3 text-[#8429c8]">
+                <i data-lucide="heart" class="w-5 h-5 fill-[#8429c8]"></i>
+                <h3 class="font-display font-bold text-base text-brand-on-surface">Recipes Favorites</h3>
+              </div>
+
+              <div class="space-y-2 max-h-[120px] overflow-y-auto pr-1" id="favorites-list-container"></div>
+            </div>
+          </div>
+
+          <!-- Current Log Area -->
+          <div class="glass-card rounded-2xl p-6 relative">
+            <div class="flex items-center justify-between mb-4">
+              <div class="flex items-center gap-2">
+                <h3 class="font-display font-bold text-lg text-brand-on-surface">Current Log</h3>
+                <span class="bg-brand-primary-fixed text-brand-on-primary-fixed text-xs font-semibold px-2.5 py-0.5 rounded-full" id="log-count-badge">0 Items</span>
+              </div>
+              <button onclick="clearCurrentLog()" id="clear-all-log-btn" class="text-xs font-medium text-brand-error hover:underline hidden">Clear All</button>
+            </div>
+
+            <!-- Empty Bowl indicator -->
+            <div id="log-empty-state" class="py-12 text-center flex flex-col items-center justify-center">
+              <div class="w-16 h-16 bg-brand-surface-low rounded-full flex items-center justify-center text-brand-outline-variant mb-3">
+                <i data-lucide="shopping-bag" class="w-8 h-8"></i>
+              </div>
+              <p class="text-sm text-brand-on-surface-variant">Your blending bowl is empty.</p>
+              <p class="text-xs text-brand-on-surface-variant/70 mt-1">Pop fruit quick picks, write custom fruits, or mix in the Lab!</p>
+            </div>
+
+            <!-- Active List populated via js -->
+            <div id="logged-items-container" class="space-y-3"></div>
+
+            <div class="mt-6">
+              <button onclick="commitWeeklyLog()" class="w-full bg-gradient-to-r from-brand-accent to-lime-600 hover:from-lime-600 hover:to-lime-700 text-white font-display font-extrabold text-base py-4 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center gap-2 transform active:scale-[0.99] pulse-glow">
+                Complete Log <i data-lucide="check-circle" class="w-5 h-5"></i>
+              </button>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- ================= TAB 2: DASHBOARD ================= -->
+        <div id="tab-content-home" class="tab-pane hidden space-y-6">
+          <div class="flex items-center justify-between">
+            <div>
+              <h1 class="font-display font-extrabold text-3xl text-brand-on-surface tracking-tight">Cloud Stats Dashboard</h1>
+              <p class="text-brand-on-surface-variant text-sm mt-1">Track your vitamins, calories, organic intake, and hydration over the current week.</p>
+            </div>
+          </div>
+
+          <!-- Real-Time Metrics Highlights Grid -->
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div class="glass-card p-4 rounded-2xl text-center border-l-4 border-l-brand-primary">
+              <span class="text-xs text-[#5a4136] font-semibold tracking-wider block uppercase">Calories</span>
+              <span class="font-display text-2xl font-black text-brand-primary block mt-1" id="dash-calories">0 kcal</span>
+              <span class="text-[10px] text-brand-on-surface-variant mt-1 block">Goal: 450 kcal / week</span>
+            </div>
+
+            <div class="glass-card p-4 rounded-2xl text-center border-l-4 border-l-brand-secondary">
+              <span class="text-xs text-[#5a4136] font-semibold tracking-wider block uppercase">Vitamix Power</span>
+              <span class="font-display text-2xl font-black text-brand-secondary block mt-1" id="dash-score">0 / 100</span>
+              <span class="text-[10px] text-brand-on-surface-variant mt-1 block">Based on vit diversity</span>
+            </div>
+
+            <div class="glass-card p-4 rounded-2xl text-center border-l-4 border-l-brand-tertiary">
+              <span class="text-xs text-[#5a4136] font-semibold tracking-wider block uppercase">Water Intake</span>
+              <span class="font-display text-2xl font-black text-brand-tertiary block mt-1" id="dash-hydration">0 ml</span>
+              <span class="text-[10px] text-brand-on-surface-variant mt-1 block">Goal: 2000 ml / week</span>
+            </div>
+
+            <div class="glass-card p-4 rounded-2xl text-center border-l-4 border-l-brand-accent">
+              <span class="text-xs text-[#5a4136] font-semibold tracking-wider block uppercase">Active Streak</span>
+              <span class="font-display text-2xl font-black text-brand-accent block mt-1">4 Days</span>
+              <span class="text-[10px] text-brand-on-surface-variant mt-1 block">Keep blending!</span>
+            </div>
+          </div>
+
+          <!-- Weekly Progress metrics -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="glass-card p-6 rounded-2xl">
+              <div class="flex items-center justify-between mb-4">
+                <h3 class="font-display font-bold text-base text-brand-on-surface">Weekly Distribution</h3>
+                <span class="text-xs text-brand-on-surface-variant">Recommended: 1-2 fruits daily</span>
+              </div>
+              <div class="grid grid-cols-7 gap-2 text-center" id="weekly-days-bars"></div>
+              <div class="mt-6 pt-4 border-t border-[#e3e2df] text-xs text-brand-on-surface-variant flex items-center justify-between">
+                <span>Consumed Weight: <strong id="total-consumed-weight">0g</strong></span>
+                <span>Water from Fruit: <strong id="total-water-est">0ml</strong></span>
+              </div>
+            </div>
+
+            <div class="glass-card p-6 rounded-2xl flex flex-col justify-between">
+              <div>
+                <h3 class="font-display font-bold text-base text-brand-on-surface mb-2">My Nutrient Synthesis</h3>
+                <p class="text-xs text-brand-on-surface-variant leading-relaxed">Biological response forecast based on fruit & hydration indexes.</p>
+              </div>
+
+              <div class="space-y-3 my-4">
+                <div class="flex items-center gap-3">
+                  <div class="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center text-sm">👁️</div>
+                  <div class="flex-1">
+                    <div class="flex justify-between text-xs font-bold text-[#1b1c1a]">
+                      <span>Skin Hydration & Glow</span>
+                      <span id="skin-glow-percentage">20%</span>
+                    </div>
+                    <div class="w-full bg-gray-200 h-1.5 rounded-full mt-1">
+                      <div class="bg-amber-400 h-1.5 rounded-full transition-all duration-500" id="synthesis-vision" style="width: 20%"></div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="flex items-center gap-3">
+                  <div class="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center text-sm">🛡️</div>
+                  <div class="flex-1">
+                    <div class="flex justify-between text-xs font-bold text-[#1b1c1a]">
+                      <span>Immune Shielding</span>
+                      <span id="immune-percentage">15%</span>
+                    </div>
+                    <div class="w-full bg-gray-200 h-1.5 rounded-full mt-1">
+                      <div class="bg-red-500 h-1.5 rounded-full transition-all duration-500" id="synthesis-immune" style="width: 15%"></div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="flex items-center gap-3">
+                  <div class="w-8 h-8 rounded-full bg-cyan-100 flex items-center justify-center text-sm">⚡</div>
+                  <div class="flex-1">
+                    <div class="flex justify-between text-xs font-bold text-[#1b1c1a]">
+                      <span>Electrolyte Energy</span>
+                      <span id="energy-percentage">30%</span>
+                    </div>
+                    <div class="w-full bg-gray-200 h-1.5 rounded-full mt-1">
+                      <div class="bg-cyan-500 h-1.5 rounded-full transition-all duration-500" id="synthesis-energy" style="width: 30%"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="bg-white/80 p-3 rounded-xl border border-white text-[11px] text-brand-on-surface-variant italic">
+                💡 <span id="synthesis-dynamic-tip">Drinking water or fresh coconut water boosts skin hydration immediately!</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="glass-card p-6 rounded-2xl">
+            <h3 class="font-display font-bold text-base text-brand-on-surface">Weekly Log History</h3>
+            <div id="weekly-history-list" class="max-h-[220px] overflow-y-auto space-y-2 pr-1 text-xs mt-4"></div>
+          </div>
+        </div>
+
+        <!-- ================= TAB 3: REFERENCE LIBRARY ================= -->
+        <div id="tab-content-library" class="tab-pane hidden space-y-6">
+          <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <h1 class="font-display font-extrabold text-3xl text-brand-on-surface tracking-tight">Organic Library</h1>
+              <p class="text-brand-on-surface-variant text-sm mt-1">Discover nutrient values and healthy bio-benefits of whole fruits.</p>
+            </div>
+            
+            <div class="flex items-center gap-2 bg-white/60 p-1.5 rounded-full border border-white/40 self-start">
+              <button onclick="filterLibrary('all')" class="lib-filter-btn px-3 py-1 rounded-full text-xs font-semibold bg-brand-primary text-white transition-all">All Fruits</button>
+              <button onclick="filterLibrary('vitamin_c')" class="lib-filter-btn px-3 py-1 rounded-full text-xs font-semibold text-brand-on-surface-variant hover:bg-white/50 transition-all">High Vit-C</button>
+              <button onclick="filterLibrary('potassium')" class="lib-filter-btn px-3 py-1 rounded-full text-xs font-semibold text-brand-on-surface-variant hover:bg-white/50 transition-all">Potassium</button>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="library-fruit-catalog"></div>
+        </div>
+
+        <!-- ================= TAB 4: DEEP INSIGHTS & CHARTS ================= -->
+        <div id="tab-content-insights" class="tab-pane hidden space-y-6">
+          <div>
+            <h1 class="font-display font-extrabold text-3xl text-brand-on-surface tracking-tight">Interactive Insights</h1>
+            <p class="text-brand-on-surface-variant text-sm mt-1">Compare synced stats directly against target recommendations.</p>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div class="glass-card p-6 rounded-2xl text-center md:col-span-1">
+              <h3 class="font-display font-bold text-sm text-[#5a4136] mb-4 uppercase tracking-wider">Weekly Calorie Deficit</h3>
+              <div class="relative w-36 h-36 mx-auto my-3 flex items-center justify-center">
+                <svg class="w-full h-full transform -rotate-90">
+                  <circle cx="72" cy="72" r="60" stroke="#f4f4f0" stroke-width="12" fill="transparent" />
+                  <circle cx="72" cy="72" r="60" stroke="url(#citrusGradient)" stroke-dasharray="377" stroke-dashoffset="377" id="insights-calorie-circle" stroke-width="12" fill="transparent" stroke-linecap="round" class="transition-all duration-1000" />
+                  <defs>
+                    <linearGradient id="citrusGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stop-color="#ff6b00" />
+                      <stop offset="100%" stop-color="#a04100" />
+                    </linearGradient>
+                  </defs>
+                </svg>
+                <div class="absolute text-center">
+                  <span class="text-2xl font-black text-brand-primary" id="insights-calorie-text">0%</span>
+                  <span class="text-[10px] block text-brand-on-surface-variant font-semibold">OF GOAL</span>
+                </div>
+              </div>
+              <p class="text-xs text-brand-on-surface-variant mt-2" id="insights-calorie-subtitle">0 kcal consumed this week</p>
+            </div>
+
+            <div class="glass-card p-6 rounded-2xl md:col-span-2">
+              <h3 class="font-display font-bold text-sm text-[#5a4136] mb-4 uppercase tracking-wider">Vitamin Intake Fulfillment</h3>
+              <div class="space-y-4">
+                <div>
+                  <div class="flex justify-between text-xs font-semibold mb-1">
+                    <span class="text-brand-primary flex items-center gap-1">🍊 Vitamin C</span>
+                    <span id="prog-txt-vitc">0 / 630 mg</span>
+                  </div>
+                  <div class="w-full bg-[#efeeea] h-3 rounded-full overflow-hidden">
+                    <div id="prog-bar-vitc" class="bg-gradient-to-r from-orange-400 to-brand-primary h-full rounded-full transition-all duration-500" style="width: 0%"></div>
+                  </div>
+                </div>
+
+                <div>
+                  <div class="flex justify-between text-xs font-semibold mb-1">
+                    <span class="text-brand-secondary flex items-center gap-1">🥭 Vitamin A</span>
+                    <span id="prog-txt-vita">0 / 6300 mcg</span>
+                  </div>
+                  <div class="w-full bg-[#efeeea] h-3 rounded-full overflow-hidden">
+                    <div id="prog-bar-vita" class="bg-gradient-to-r from-purple-400 to-brand-secondary h-full rounded-full transition-all duration-500" style="width: 0%"></div>
+                  </div>
+                </div>
+
+                <div>
+                  <div class="flex justify-between text-xs font-semibold mb-1">
+                    <span class="text-brand-tertiary flex items-center gap-1">🍌 Potassium</span>
+                    <span id="prog-txt-pot">0 / 24500 mg</span>
+                  </div>
+                  <div class="w-full bg-[#efeeea] h-3 rounded-full overflow-hidden">
+                    <div id="prog-bar-pot" class="bg-gradient-to-r from-sky-400 to-brand-tertiary h-full rounded-full transition-all duration-500" style="width: 0%"></div>
+                  </div>
+                </div>
+
+                <div>
+                  <div class="flex justify-between text-xs font-semibold mb-1">
+                    <span class="text-[#84cc16] flex items-center gap-1">🍎 Dietary Fiber</span>
+                    <span id="prog-txt-fiber">0 / 196 g</span>
+                  </div>
+                  <div class="w-full bg-[#efeeea] h-3 rounded-full overflow-hidden">
+                    <div id="prog-bar-fiber" class="bg-gradient-to-r from-lime-400 to-[#84cc16] h-full rounded-full transition-all duration-500" style="width: 0%"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ================= TAB 5: BACKUP & DATA CLOUD ================= -->
+        <div id="tab-content-profile" class="tab-pane hidden space-y-6">
+          <div>
+            <h1 class="font-display font-extrabold text-3xl text-brand-on-surface tracking-tight">Vitamix Settings</h1>
+            <p class="text-brand-on-surface-variant text-sm mt-1">Manage sync parameters and biometric goals.</p>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            
+            <!-- Real-time sync configuration card -->
+            <div class="glass-card p-6 rounded-2xl space-y-4 border-2 border-brand-primary-fixed">
+              <div class="flex items-center gap-2">
+                <i data-lucide="cloud-lightning" class="w-5 h-5 text-brand-primary animate-bounce"></i>
+                <h3 class="font-display font-bold text-lg text-brand-on-surface">Data Portability</h3>
+              </div>
+              <p class="text-xs text-brand-on-surface-variant">Deploy this index.html on GitHub pages. Connect your sync profiles securely using LocalStorage. You can copy the profile payload data to load it onto other phones!</p>
+              
+              <!-- Displays local data payload for quick copy/pasting backup -->
+              <div>
+                <label class="block text-xs font-semibold text-[#5a4136] mb-1">Local Backup Payload String</label>
+                <div class="flex gap-2">
+                  <input type="text" id="sync-key-display" readonly value="..." class="w-full bg-[#f4f4f0] p-3 rounded-xl text-xs border border-transparent font-mono select-all text-brand-on-surface focus:outline-none">
+                  <button onclick="copySyncKey()" class="bg-brand-primary text-white p-3 rounded-xl hover:bg-brand-primary-container transition-all" title="Copy backup string">
+                    <i data-lucide="copy" class="w-4 h-4"></i>
+                  </button>
+                </div>
+              </div>
+
+              <div class="border-t border-brand-outline-variant/30 pt-3">
+                <label class="block text-xs font-semibold text-[#5a4136] mb-1">Restore From Backup String</label>
+                <div class="flex gap-2">
+                  <input type="text" id="input-sync-key" placeholder="Paste data backup string" class="w-full bg-[#f4f4f0] p-3 rounded-xl text-xs border border-transparent focus:border-brand-primary outline-none">
+                  <button onclick="connectExistingKey()" class="bg-brand-secondary text-white text-xs font-bold px-4 py-3 rounded-xl hover:bg-brand-secondary-container transition-all">
+                    Restore
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Profile Settings -->
+            <div class="glass-card p-6 rounded-2xl space-y-4">
+              <h3 class="font-display font-bold text-base text-brand-on-surface">Personal Biosignature</h3>
+              <div>
+                <label class="block text-xs font-semibold text-[#5a4136] mb-1">User Name</label>
+                <input type="text" id="user-name" class="w-full bg-[#f4f4f0] p-3 rounded-xl text-sm border border-transparent focus:border-brand-primary outline-none transition-all">
+              </div>
+
+              <div class="grid grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-xs font-semibold text-[#5a4136] mb-1">Gender</label>
+                  <select id="user-gender" class="w-full bg-[#f4f4f0] p-3 rounded-xl text-sm border border-transparent focus:border-brand-primary outline-none transition-all">
+                    <option value="female">Female</option>
+                    <option value="male" selected>Male</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-xs font-semibold text-[#5a4136] mb-1">Age</label>
+                  <input type="number" id="user-age" class="w-full bg-[#f4f4f0] p-3 rounded-xl text-sm border border-transparent focus:border-brand-primary outline-none transition-all">
+                </div>
+              </div>
+
+              <div>
+                <label class="block text-xs font-semibold text-[#5a4136] mb-1">Weekly Calorie Target</label>
+                <input type="range" id="user-goal-calories" min="100" max="2000" step="50" oninput="updateGoalFromRange(this.value)" class="w-full accent-brand-primary">
+                <div class="flex justify-between text-xs text-brand-on-surface-variant font-bold mt-1">
+                  <span>100 kcal</span>
+                  <span id="range-val-goal" class="text-brand-primary">450 kcal</span>
+                  <span>2000 kcal</span>
+                </div>
+              </div>
+
+              <button onclick="saveProfile()" class="w-full bg-brand-primary text-white font-semibold text-xs py-3 rounded-xl hover:bg-brand-primary-container transition-all">Update Physiological Profile</button>
+            </div>
+
+          </div>
+        </div>
+
+      </section>
+
+      <!-- RIGHT SECTION (VISUAL BLENDER & HYDRATION DROPLET) -->
+      <section class="col-span-1 lg:col-span-4 space-y-6">
+        
+        <!-- Interactive Vitamix State -->
+        <div class="glass-card rounded-2xl p-6 text-center space-y-6 relative overflow-hidden">
+          <div class="absolute -right-12 -top-12 w-28 h-28 rounded-full bg-brand-primary/10 blur-xl"></div>
+          <div class="absolute -left-12 -bottom-12 w-28 h-28 rounded-full bg-brand-secondary/10 blur-xl"></div>
+
+          <div>
+            <span class="text-[10px] font-extrabold tracking-wider text-[#8e7164] uppercase block">Weekly Organic Power Progress</span>
+            <h2 class="font-display font-extrabold text-xl text-brand-on-surface mt-1">Vitamix Blend State</h2>
+          </div>
+
+          <div class="relative w-48 h-48 mx-auto flex items-center justify-center">
+            <svg class="w-full h-full transform -rotate-90">
+              <circle cx="96" cy="96" r="76" stroke="#efeeea" stroke-width="14" fill="transparent" />
+              <circle cx="96" cy="96" r="76" stroke="url(#vitamixGradient)" stroke-dasharray="477" stroke-dashoffset="477" id="central-progress-circle" stroke-width="14" fill="transparent" stroke-linecap="round" class="transition-all duration-1000" />
+              <defs>
+                <linearGradient id="vitamixGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#8429c8" />
+                  <stop offset="100%" stop-color="#ff6b00" />
+                </linearGradient>
+              </defs>
+            </svg>
+            
+            <div class="absolute text-center flex flex-col justify-center items-center">
+              <span class="text-4xl font-black text-brand-primary" id="central-percentage">0%</span>
+              <span class="text-[10px] text-brand-on-surface-variant font-bold uppercase tracking-wider mt-0.5">VITAMIN C</span>
+              <span class="text-xs font-semibold text-[#8429c8]" id="central-calorie-track">0 / 90 mg</span>
+            </div>
+          </div>
+
+          <!-- Virtual Vitamix Cup -->
+          <div class="bg-white/80 rounded-xl p-4 border border-white/80 shadow-inner">
+            <h4 class="text-xs font-bold text-brand-on-surface mb-2.5 flex items-center justify-center gap-1">
+              <i data-lucide="beaker" class="w-4 h-4 text-brand-primary"></i>
+              Virtual Vitamix Cup Contents
+            </h4>
+            
+            <div class="w-32 h-44 bg-gradient-to-b from-white/30 to-white/70 mx-auto rounded-b-3xl rounded-t-lg border-2 border-white/60 relative overflow-hidden flex flex-col justify-end p-1 shadow-md">
+              <div class="absolute left-2 inset-y-4 flex flex-col justify-between text-[8px] text-gray-400 font-bold pointer-events-none">
+                <span>MAX —</span>
+                <span>400ml —</span>
+                <span>200ml —</span>
+                <span>MIN —</span>
+              </div>
+              <div class="absolute top-0 inset-x-0 h-3 bg-brand-primary rounded-t-md shadow"></div>
+              <div id="blender-layers-container" class="w-full h-full flex flex-col justify-end space-y-[2px] transition-all duration-500 rounded-b-2xl pt-4"></div>
+            </div>
+
+            <button onclick="simulateBlendAction()" class="mt-4 w-full bg-brand-on-surface hover:bg-brand-inverse-surface text-white text-xs font-bold py-2.5 rounded-xl transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2">
+              <i data-lucide="zap" class="w-3.5 h-3.5 text-yellow-300"></i> Pulse Blender Simulation
+            </button>
+          </div>
+
+        </div>
+
+        <!-- Interactive Hydration Tracker -->
+        <div class="glass-card rounded-2xl p-6 relative overflow-hidden text-center space-y-4">
+          <div class="absolute -right-6 -bottom-6 w-20 h-20 bg-cyan-100 rounded-full blur-xl opacity-60"></div>
+          
+          <div class="flex items-center justify-between">
+            <span class="text-[10px] font-extrabold tracking-wider text-brand-tertiary uppercase block">Water & Solubles Core</span>
+            <span class="bg-cyan-100 text-[#006780] text-[9px] font-bold px-2 py-0.5 rounded-full uppercase" id="hydration-percentage-badge">0% Daily Goal</span>
+          </div>
+
+          <!-- Droplet Graphic -->
+          <div class="relative w-24 h-28 mx-auto flex items-end justify-center py-4">
+            <svg class="absolute inset-0 w-full h-full" viewBox="0 0 30 38" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M15 2C15 2 28 15 28 24C28 31.18 22.18 37 15 37C7.82 37 2 31.18 2 24C2 15 15 2 15 2Z" fill="#efeeea" stroke="#006780" stroke-width="1.5"/>
+              <clipPath id="droplet-clip">
+                <path d="M15 2.5C15 2.5 27.5 15.2 27.5 24C27.5 30.9 21.9 36.5 15 36.5C8.1 36.5 2.5 30.9 2.5 24C2.5 15.2 15 2.5 15 2.5Z"/>
+              </clipPath>
+              <g clip-path="url(#droplet-clip)">
+                <rect id="droplet-water-level" class="water-wave fill-gradient transition-all duration-700" x="-5" y="15" width="40" height="40" fill="#06a6cc" style="transform: translateY(100%); transition: transform 0.6s ease;"></rect>
+              </g>
+            </svg>
+            <div class="relative z-10 text-center">
+              <span class="text-xl font-black text-brand-on-surface" id="droplet-fluid-txt">0 ml</span>
+              <span class="text-[8px] font-bold text-[#003644] block uppercase">Weekly total</span>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2 text-xs font-semibold">
+            <button onclick="logWater(250)" class="bg-cyan-50 hover:bg-cyan-100 text-brand-tertiary p-2 rounded-xl border border-cyan-200 transition-all flex items-center justify-center gap-1">
+              💧 +250ml Water
+            </button>
+            <button onclick="logWater(330, true)" class="bg-purple-50 hover:bg-purple-100 text-brand-secondary p-2 rounded-xl border border-purple-200 transition-all flex items-center justify-center gap-1">
+              🥥 +330ml Coco
+            </button>
+          </div>
+        </div>
+
+      </section>
+
+    </main>
+
+    <!-- FOOTER NAVIGATION -->
+    <nav class="fixed bottom-0 inset-x-0 bg-white/80 backdrop-blur-lg border-t border-[#e3e2df] py-3.5 px-6 z-40 max-w-md mx-auto md:max-w-2xl lg:max-w-4xl rounded-t-3xl shadow-2xl flex items-center justify-between mobile-footer-nav">
+      <button onclick="switchTab('home', this)" class="nav-tab-btn flex flex-col items-center justify-center gap-1 text-[#8e7164] hover:text-brand-primary transition-all duration-300 w-16">
+        <i data-lucide="layout-grid" class="w-5 h-5"></i>
+        <span class="text-[10px] font-bold tracking-tight">HOME</span>
+      </button>
+
+      <button onclick="switchTab('library', this)" class="nav-tab-btn flex flex-col items-center justify-center gap-1 text-[#8e7164] hover:text-brand-primary transition-all duration-300 w-16">
+        <i data-lucide="book-open" class="w-5 h-5"></i>
+        <span class="text-[10px] font-bold tracking-tight">LIBRARY</span>
+      </button>
+
+      <button onclick="switchTab('logger', this)" class="nav-tab-btn relative -top-6 flex flex-col items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-brand-primary-container to-brand-primary text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300 ring-4 ring-white">
+        <i data-lucide="plus" class="w-7 h-7"></i>
+        <span class="text-[8px] font-black tracking-widest uppercase absolute bottom-1.5 text-orange-100">LOGGER</span>
+      </button>
+
+      <button onclick="switchTab('insights', this)" class="nav-tab-btn flex flex-col items-center justify-center gap-1 text-[#8e7164] hover:text-brand-primary transition-all duration-300 w-16">
+        <i data-lucide="trending-up" class="w-5 h-5"></i>
+        <span class="text-[10px] font-bold tracking-tight">INSIGHTS</span>
+      </button>
+
+      <button onclick="switchTab('profile', this)" class="nav-tab-btn flex flex-col items-center justify-center gap-1 text-[#8e7164] hover:text-brand-primary transition-all duration-300 w-16">
+        <i data-lucide="user" class="w-5 h-5"></i>
+        <span class="text-[10px] font-bold tracking-tight">PROFILE</span>
+      </button>
+    </nav>
+
+  </div>
+
+  <!-- MODALS -->
+  <div id="info-modal" class="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="glass-modal max-w-md w-full rounded-2xl p-6 shadow-2xl relative slide-in space-y-4">
+      <button onclick="toggleInfoModal(false)" class="absolute top-4 right-4 text-brand-on-surface-variant hover:text-brand-primary">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+      <div class="text-center">
+        <span class="text-3xl">🧪</span>
+        <h3 class="font-display font-extrabold text-xl text-brand-on-surface mt-2">Vitamix PWA Companion</h3>
+      </div>
+      <p class="text-xs text-brand-on-surface-variant leading-relaxed">
+        Welcome! This app runs offline using LocalStorage persistence. Copy and paste backup strings in the Settings panel to move your data between devices!
+      </p>
+      <button onclick="toggleInfoModal(false)" class="w-full bg-brand-primary text-white text-xs font-bold py-2.5 rounded-xl hover:bg-brand-primary-container transition-all">Got it!</button>
+    </div>
+  </div>
+
+  <div id="custom-modal" class="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="glass-modal max-w-md w-full rounded-2xl p-6 shadow-2xl relative slide-in space-y-4">
+      <button onclick="closeCustomLogModal()" class="absolute top-4 right-4 text-brand-on-surface-variant hover:text-brand-primary">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+      <div class="flex items-center gap-2 mb-2">
+        <i data-lucide="plus" class="w-5 h-5 text-brand-primary"></i>
+        <h3 class="font-display font-bold text-lg text-brand-on-surface">Log a Custom Organic Fruit</h3>
+      </div>
+      <form id="custom-fruit-form" onsubmit="handleCustomFruitSubmit(event)" class="space-y-3 text-xs">
+        <div>
+          <label class="block text-xs font-semibold text-[#5a4136] mb-1">Fruit Name</label>
+          <input type="text" id="custom-name" required placeholder="e.g. Fresh Mango" class="w-full bg-[#f4f4f0] p-3 rounded-xl border border-transparent focus:border-brand-primary outline-none text-brand-on-surface">
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-[#5a4136] mb-1">Weight (g)</label>
+            <input type="number" id="custom-weight" required min="10" max="1000" value="150" class="w-full bg-[#f4f4f0] p-3 rounded-xl">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-[#5a4136] mb-1">Calories (kcal)</label>
+            <input type="number" id="custom-calories" required min="1" max="500" value="70" class="w-full bg-[#f4f4f0] p-3 rounded-xl">
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div><label class="block text-[10px] font-semibold text-[#5a4136]">Vitamin C (mg)</label><input type="number" id="custom-vitc" value="20" class="w-full bg-[#f4f4f0] p-2.5 rounded-xl text-brand-on-surface"></div>
+          <div><label class="block text-[10px] font-semibold text-[#5a4136]">Vitamin A (mcg)</label><input type="number" id="custom-vita" value="100" class="w-full bg-[#f4f4f0] p-2.5 rounded-xl text-brand-on-surface"></div>
+          <div><label class="block text-[10px] font-semibold text-[#5a4136]">Potassium (mg)</label><input type="number" id="custom-pot" value="250" class="w-full bg-[#f4f4f0] p-2.5 rounded-xl text-brand-on-surface"></div>
+          <div><label class="block text-[10px] font-semibold text-[#5a4136]">Dietary Fiber (g)</label><input type="number" id="custom-fiber" value="3" class="w-full bg-[#f4f4f0] p-2.5 rounded-xl text-brand-on-surface"></div>
+        </div>
+        <div class="flex gap-2 pt-2">
+          <button type="button" onclick="closeCustomLogModal()" class="w-1/2 bg-[#f4f4f0] py-3 rounded-xl font-bold">Cancel</button>
+          <button type="submit" class="w-1/2 bg-brand-primary text-white font-semibold py-3 rounded-xl">Add to Bowl</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="blend-lab-modal" class="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="glass-modal max-w-lg w-full rounded-2xl p-6 shadow-2xl relative slide-in space-y-4">
+      <button onclick="closeBlendLabModal()" class="absolute top-4 right-4 text-brand-on-surface-variant hover:text-brand-primary">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+      <div class="flex items-center gap-2">
+        <span class="p-2 bg-purple-100 rounded-full text-brand-secondary"><i data-lucide="beaker" class="w-5 h-5"></i></span>
+        <div>
+          <h3 class="font-display font-extrabold text-lg text-brand-on-surface">Interactive Vitamix Blend Lab</h3>
+          <p class="text-[11px] text-brand-on-surface-variant">Design, calibrate, and save customized super blends.</p>
+        </div>
+      </div>
+      <form id="blend-lab-form" onsubmit="handleBlendLabSubmit(event)" class="space-y-4 text-xs">
+        <div>
+          <label class="block text-xs font-semibold text-[#5a4136] mb-1">Recipe Name</label>
+          <input type="text" id="lab-blend-name" required placeholder="e.g. Pristine Antioxidant Charger" class="w-full bg-[#f4f4f0] p-3 rounded-xl font-bold text-brand-on-surface">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-[#5a4136] mb-1.5">Select Fruits to Incorporate</label>
+          <div class="grid grid-cols-2 gap-2.5 max-h-[140px] overflow-y-auto p-1 bg-[#faf9f5]/50 rounded-xl border border-gray-100 font-medium">
+            <label class="flex items-center gap-2 p-2 bg-white rounded-lg border cursor-pointer"><input type="checkbox" name="lab-fruit" value="apple" class="accent-brand-primary w-4 h-4"><span>🍎 Fuji Apple</span></label>
+            <label class="flex items-center gap-2 p-2 bg-white rounded-lg border cursor-pointer"><input type="checkbox" name="lab-fruit" value="banana" class="accent-brand-primary w-4 h-4"><span>🍌 Organic Banana</span></label>
+            <label class="flex items-center gap-2 p-2 bg-white rounded-lg border cursor-pointer"><input type="checkbox" name="lab-fruit" value="orange" class="accent-brand-primary w-4 h-4"><span>🍊 Citrus Orange</span></label>
+            <label class="flex items-center gap-2 p-2 bg-white rounded-lg border cursor-pointer"><input type="checkbox" name="lab-fruit" value="berries" class="accent-brand-primary w-4 h-4"><span>🍇 Mixed Berries</span></label>
+            <label class="flex items-center gap-2 p-2 bg-white rounded-lg border cursor-pointer"><input type="checkbox" name="lab-fruit" value="kiwi" class="accent-brand-primary w-4 h-4"><span>🥝 Golden Kiwi</span></label>
+            <label class="flex items-center gap-2 p-2 bg-white rounded-lg border cursor-pointer"><input type="checkbox" name="lab-fruit" value="avocado" class="accent-brand-primary w-4 h-4"><span>🥑 Hass Avocado</span></label>
+            <label class="flex items-center gap-2 p-2 bg-white rounded-lg border cursor-pointer"><input type="checkbox" name="lab-fruit" value="mango" class="accent-brand-primary w-4 h-4"><span>🥭 Alfonso Mango</span></label>
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-[#5a4136] mb-1.5">Select Liquid Base</label>
+          <div class="grid grid-cols-2 gap-2">
+            <label class="flex items-center gap-2 p-2 bg-white rounded-lg border cursor-pointer"><input type="radio" name="lab-liquid" value="coconut" checked class="accent-brand-tertiary"><div><span class="font-semibold block text-brand-on-surface">Coconut Water</span><span class="text-[9px] text-gray-500">+120mg Potassium</span></div></label>
+            <label class="flex items-center gap-2 p-2 bg-white rounded-lg border cursor-pointer"><input type="radio" name="lab-liquid" value="almond" class="accent-brand-secondary"><div><span class="font-semibold block text-brand-on-surface">Almond Milk</span><span class="text-[9px] text-gray-500">+40 kcal</span></div></label>
+            <label class="flex items-center gap-2 p-2 bg-white rounded-lg border cursor-pointer"><input type="radio" name="lab-liquid" value="oat" class="accent-brand-primary"><div><span class="font-semibold block text-brand-on-surface">Creamy Oat Milk</span><span class="text-[9px] text-gray-500">+80 kcal | +2g Fiber</span></div></label>
+            <label class="flex items-center gap-2 p-2 bg-white rounded-lg border cursor-pointer"><input type="radio" name="lab-liquid" value="water" class="accent-cyan-500"><div><span class="font-semibold block text-brand-on-surface">Alkaline Water</span><span class="text-[9px] text-gray-500">Pure Hydration</span></div></label>
+          </div>
+        </div>
+        <div class="flex gap-2 pt-2">
+          <button type="button" onclick="closeBlendLabModal()" class="w-1/2 bg-[#f4f4f0] py-3 rounded-xl font-bold">Cancel</button>
+          <button type="submit" class="w-1/2 bg-gradient-to-r from-brand-secondary to-brand-primary text-white font-semibold py-3 rounded-xl">Synthesize & Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Persistent Client Storage System -->
+  <script>
+    const BASE_FRUIT_DATABASE = {
+      apple: { id: 'apple', name: 'Fuji Apple', emoji: '🍎', category: 'Pomaceous', standardUnit: '1 unit', weight: 180, calories: 95, vitc: 8, vita: 54, pot: 195, fiber: 4.4, color: '#ff3b30', benefits: 'Promotes digestion & metabolic rates.', class: 'bg-red-100' },
+      banana: { id: 'banana', name: 'Organic Banana', emoji: '🍌', category: 'Berry', standardUnit: '1 unit', weight: 120, calories: 105, vitc: 10, vita: 76, pot: 422, fiber: 3.1, color: '#ffcc00', benefits: 'Excellent potassium electrolyte supply.', class: 'bg-yellow-100' },
+      orange: { id: 'orange', name: 'Citrus Orange', emoji: '🍊', category: 'Hesperidium', standardUnit: '1 unit', weight: 130, calories: 62, vitc: 70, vita: 250, pot: 237, fiber: 3.1, color: '#ff9500', benefits: 'Protects cells with rich Vitamin C.', class: 'bg-orange-100' },
+      berries: { id: 'berries', name: 'Mixed Berries', emoji: '🍇', category: 'Aggregate', standardUnit: '150g cup', weight: 150, calories: 48, vitc: 15, vita: 80, pot: 110, fiber: 5.2, color: '#af52de', benefits: 'Powerful polyphenol antioxidant values.', class: 'bg-purple-100' },
+      kiwi: { id: 'kiwi', name: 'Golden Kiwi', emoji: '🥝', category: 'Berry', standardUnit: '1 unit', weight: 75, calories: 42, vitc: 64, vita: 60, pot: 215, fiber: 2.1, color: '#4cd964', benefits: 'Rich in dietary fiber and Vitamin E.', class: 'bg-green-100' },
+      avocado: { id: 'avocado', name: 'Hass Avocado', emoji: '🥑', category: 'Berry', standardUnit: '1/2 fruit', weight: 80, calories: 120, vitc: 6, vita: 110, pot: 388, fiber: 5.4, color: '#5856d6', benefits: 'Accelerates absorption of skin vitamins.', class: 'bg-[#e2f1e6]' },
+      strawberry: { id: 'strawberry', name: 'Fresh Strawberry', emoji: '🍓', category: 'Accessory', standardUnit: '100g serving', weight: 100, calories: 33, vitc: 58, vita: 12, pot: 153, fiber: 2.0, color: '#ff2d55', benefits: 'Contains rich folate & trace minerals.', class: 'bg-red-50' },
+      mango: { id: 'mango', name: 'Alfonso Mango', emoji: '🥭', category: 'Drupe', standardUnit: '1 serving', weight: 150, calories: 90, vitc: 36, vita: 1080, pot: 250, fiber: 2.6, color: '#ff9500', benefits: 'Supercharged with pure retinal Vitamin A.', class: 'bg-amber-100' }
+    };
+
+    const WEEKLY_RDA = { vitc: 630, vita: 6300, pot: 24500, fiber: 196 };
+
+    const SEASON_PRESETS = {
+      spring: { label: "Spring Citrus", emoji: "🌸", bannerText: "Oranges & Kiwis get +20% Vitamin C yield!", g1: "season-spring-g1", g2: "season-spring-g2", g3: "season-spring-g3" },
+      summer: { label: "Summer Berries", emoji: "☀️", bannerText: "Berries & Strawberries get +30% antioxidants!", g1: "season-summer-g1", g2: "season-summer-g2", g3: "season-summer-g3" },
+      autumn: { label: "Autumn Orchard", emoji: "🍁", bannerText: "Apples get +20% Dietary Fiber!", g1: "season-autumn-g1", g2: "season-autumn-g2", g3: "season-autumn-g3" },
+      winter: { label: "Winter Vitality", emoji: "❄️", bannerText: "Mangoes & Avocados get +20% Vitamin A!", g1: "season-winter-g1", g2: "season-winter-g2", g3: "season-winter-g3" }
+    };
+
+    // Client Storage Driver
+    const VitamixDB = {
+      get(key, defaultValue) {
+        try {
+          const val = localStorage.getItem('vitamix_' + key);
+          return val ? JSON.parse(val) : defaultValue;
+        } catch (e) {
+          return defaultValue;
+        }
+      },
+      set(key, value) {
+        try {
+          localStorage.setItem('vitamix_' + key, JSON.stringify(value));
+        } catch (e) {}
+      }
+    };
+
+    // Global application runtime states
+    window.currentLog = [];
+    window.weekHistory = [];
+    window.weeklyHydrationTotal = 0;
+    window.favoriteRecipes = {};
+
+    window.userGoalCalories = 450;
+    window.userGoalHydration = 2000;
+    window.userName = "Health Champion";
+    window.userAge = 28;
+    window.userGender = "male";
+
+    window.FRUIT_DATABASE = JSON.parse(JSON.stringify(BASE_FRUIT_DATABASE));
+
+    window.onload = function() {
+      // Load tabs
+      switchTab('logger', document.querySelector('.nav-tab-btn:nth-child(3)'));
+      
+      // Load saved DB variables on start
+      window.currentLog = VitamixDB.get('current_log', []);
+      window.weekHistory = VitamixDB.get('week_history', []);
+      window.weeklyHydrationTotal = VitamixDB.get('weekly_hydration', 0);
+      
+      const defaultRecipes = {
+        green_energy: { name: "Green Energy", emoji: "🥝", ingredients: ['kiwi', 'avocado', 'apple'], liquid: "coconut", desc: "Kiwi, Avocado, Apple" },
+        berry_blast: { name: "Berry Blast", emoji: "🍓", ingredients: ['berries', 'strawberry'], liquid: "water", desc: "Berry, Strawberry Blend" }
+      };
+      window.favoriteRecipes = VitamixDB.get('favorite_recipes', defaultRecipes);
+
+      window.userGoalCalories = VitamixDB.get('user_goal_calories', 450);
+      window.userGoalHydration = VitamixDB.get('user_goal_hydration', 2000);
+      window.userName = VitamixDB.get('user_name', "Health Champion");
+      window.userAge = VitamixDB.get('user_age', 28);
+      window.userGender = VitamixDB.get('user_gender', "male");
+
+      // Bind profile inputs
+      const nameInput = document.getElementById('user-name');
+      if (nameInput) nameInput.value = window.userName;
+      const ageInput = document.getElementById('user-age');
+      if (ageInput) ageInput.value = window.userAge;
+      const genderInput = document.getElementById('user-gender');
+      if (genderInput) genderInput.value = window.userGender;
+      const goalInput = document.getElementById('user-goal-calories');
+      if (goalInput) goalInput.value = window.userGoalCalories;
+
+      // Generate local backup payload string
+      updateBackupPayload();
+
+      setSeason('spring', true);
+      lucide.createIcons();
+    };
+
+    function updateBackupPayload() {
+      const payload = {
+        currentLog: window.currentLog,
+        weekHistory: window.weekHistory,
+        weeklyHydrationTotal: window.weeklyHydrationTotal,
+        favoriteRecipes: window.favoriteRecipes,
+        userGoalCalories: window.userGoalCalories,
+        userGoalHydration: window.userGoalHydration,
+        userName: window.userName,
+        userAge: window.userAge,
+        userGender: window.userGender
+      };
+      const payloadStr = btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
+      const display = document.getElementById('sync-key-display');
+      if (display) display.value = payloadStr;
+    }
+
+    function switchTab(tabId, buttonElement) {
+      document.querySelectorAll('.tab-pane').forEach(el => el.classList.add('hidden'));
+      document.querySelectorAll('.nav-tab-btn').forEach(btn => {
+        btn.classList.remove('text-brand-primary', 'scale-105', 'font-extrabold');
+        btn.classList.add('text-[#8e7164]');
+      });
+
+      const targetPane = document.getElementById(`tab-content-${tabId}`);
+      if (targetPane) targetPane.classList.remove('hidden');
+
+      if (buttonElement) {
+        buttonElement.classList.add('text-brand-primary', 'scale-105');
+        buttonElement.classList.remove('text-[#8e7164]');
+      }
+
+      if (tabId === 'home') {
+        renderWeeklyDistribution();
+        renderWeeklyHistoryList();
+      } else if (tabId === 'insights') {
+        renderInsightsGauges();
+      }
+      lucide.createIcons();
+    }
+
+    function toggleSeasonDropdown() {
+      const dd = document.getElementById('season-dropdown');
+      if (dd) dd.classList.toggle('hidden');
+    }
+
+    function setSeason(seasonKey, isInitial = false) {
+      currentSeason = seasonKey;
+      const preset = SEASON_PRESETS[seasonKey];
+      if (!preset) return;
+
+      const dd = document.getElementById('season-dropdown');
+      if (dd) dd.classList.add('hidden');
+
+      safeSetText('season-emoji', preset.emoji);
+      safeSetText('season-lbl', preset.label);
+      
+      const banner = document.getElementById('season-announcement-banner');
+      if (banner) {
+        banner.innerHTML = `
+          <span class="text-lg">${preset.emoji}</span>
+          <div>
+            <span class="font-bold text-[#1b1c1a] block">${preset.label} Active</span>
+            <span class="text-[10px] text-brand-primary">${preset.bannerText}</span>
+          </div>
+        `;
+      }
+
+      safeSetText('lib-season-emoji', preset.emoji);
+      safeSetText('lib-season-title', `${preset.label} Season Live!`);
+      safeSetText('lib-season-desc', preset.bannerText);
+
+      const glow1 = document.getElementById('glow-1');
+      const glow2 = document.getElementById('glow-2');
+      const glow3 = document.getElementById('glow-3');
+
+      if (glow1) glow1.className = `ambient-glow-1 ${preset.g1}`;
+      if (glow2) glow2.className = `ambient-glow-2 ${preset.g2}`;
+      if (glow3) glow3.className = `ambient-glow-3 ${preset.g3}`;
+
+      window.FRUIT_DATABASE = JSON.parse(JSON.stringify(BASE_FRUIT_DATABASE));
+      
+      const fruitsToDeactive = ['apple', 'banana', 'orange', 'berries'];
+      fruitsToDeactive.forEach(fid => {
+        const indicator = document.getElementById(`seasonal-indicator-${fid}`);
+        if (indicator) indicator.classList.add('hidden');
+      });
+
+      if (seasonKey === 'spring') {
+        window.FRUIT_DATABASE.orange.vitc = Math.round(window.FRUIT_DATABASE.orange.vitc * 1.2);
+        window.FRUIT_DATABASE.kiwi.vitc = Math.round(window.FRUIT_DATABASE.kiwi.vitc * 1.2);
+        const ind = document.getElementById('seasonal-indicator-orange');
+        if (ind) ind.classList.remove('hidden');
+        safeSetText('orange-desc-stat', "Vit C 1.2x Boost!");
+      } else if (seasonKey === 'summer') {
+        window.FRUIT_DATABASE.berries.vitc = Math.round(window.FRUIT_DATABASE.berries.vitc * 1.3);
+        window.FRUIT_DATABASE.strawberry.vitc = Math.round(window.FRUIT_DATABASE.strawberry.vitc * 1.3);
+        const ind = document.getElementById('seasonal-indicator-berries');
+        if (ind) ind.classList.remove('hidden');
+        safeSetText('berries-desc-stat', "Antiox 1.3x Boost!");
+      } else if (seasonKey === 'autumn') {
+        window.FRUIT_DATABASE.apple.fiber = parseFloat((window.FRUIT_DATABASE.apple.fiber * 1.2).toFixed(1));
+        const ind = document.getElementById('seasonal-indicator-apple');
+        if (ind) ind.classList.remove('hidden');
+        safeSetText('apple-desc-stat', "Fiber 1.2x Boost!");
+      } else if (seasonKey === 'winter') {
+        window.FRUIT_DATABASE.mango.vita = Math.round(window.FRUIT_DATABASE.mango.vita * 1.2);
+        window.FRUIT_DATABASE.avocado.vita = Math.round(window.FRUIT_DATABASE.avocado.vita * 1.2);
+        const ind = document.getElementById('seasonal-indicator-banana');
+        if (ind) ind.classList.remove('hidden');
+        safeSetText('banana-desc-stat', "A-Vitamin Boost!");
+      }
+
+      if (!isInitial) {
+        triggerToast(`Climate shifted into ${preset.label}! Refreshing values.`);
+        updateUI();
+        renderLibraryCatalog('all');
+      }
+    }
+
+    function addFruitToLog(fruitId) {
+      const template = window.FRUIT_DATABASE[fruitId];
+      if (!template) return;
+
+      const newEntry = {
+        ...template,
+        quantity: 1,
+        customId: 'item-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4)
+      };
+
+      window.currentLog.push(newEntry);
+      triggerToast(`Added ${template.emoji} ${template.name} to blender cup!`);
+      updateUI();
+      saveToDB();
+    }
+
+    function logWater(amount, isCoconut = false) {
+      window.weeklyHydrationTotal += amount;
+      if (isCoconut) {
+        window.currentLog.push({
+          id: 'coco-water', name: 'Coconut Electrolytes', emoji: '🥥', category: 'Electrolyte Base', standardUnit: '330ml pack', weight: 330, calories: 60, vitc: 10, vita: 0, pot: 450, fiber: 1, color: '#e2f1e6', benefits: 'Pure coconut electrolytes.', class: 'bg-purple-100', quantity: 1, customId: 'coco-' + Date.now()
+        });
+        triggerToast(`Poured +330ml pure Coconut Water!`);
+      } else {
+        triggerToast(`Logged +${amount}ml Alkaline Water!`);
+      }
+      updateUI();
+      saveToDB();
+    }
+
+    function openBlendLabModal() {
+      const el = document.getElementById('blend-lab-modal');
+      if (el) el.classList.remove('hidden');
+    }
+
+    function closeBlendLabModal() {
+      const el = document.getElementById('blend-lab-modal');
+      if (el) el.classList.add('hidden');
+    }
+
+    function handleBlendLabSubmit(e) {
+      e.preventDefault();
+      const blendName = document.getElementById('lab-blend-name').value;
+      const checkedBoxes = document.querySelectorAll('input[name="lab-fruit"]:checked');
+      const liquidBase = document.querySelector('input[name="lab-liquid"]:checked').value;
+
+      if (checkedBoxes.length === 0) {
+        triggerToast("Please select at least 1 fruit to synthesize!");
+        return;
+      }
+
+      const selectedFruits = Array.from(checkedBoxes).map(cb => cb.value);
+      const recipeKey = 'custom_' + Date.now();
+      
+      window.favoriteRecipes[recipeKey] = {
+        name: blendName,
+        emoji: "🧪",
+        ingredients: selectedFruits,
+        liquid: liquidBase,
+        desc: selectedFruits.map(f => window.FRUIT_DATABASE[f].name).join(', ')
+      };
+
+      renderFavoritesList();
+      closeBlendLabModal();
+      triggerToast(`Saved "${blendName}" directly to Favorites!`);
+      saveToDB();
+    }
+
+    // Favorites rendering matching screen favorites list
+    function renderFavoritesList() {
+      const container = document.getElementById('favorites-list-container');
+      if (!container) return;
+
+      container.innerHTML = Object.keys(window.favoriteRecipes).map(key => {
+        const fav = window.favoriteRecipes[key];
+        return `
+          <button onclick="loadFavoritePreset('${key}')" class="w-full flex items-center justify-between p-2 rounded-xl bg-white/60 hover:bg-white border border-white/40 hover:border-[#8429c8]/30 transition-all text-left group">
+            <div class="flex items-center gap-2">
+              <span class="text-lg">${fav.emoji}</span>
+              <div>
+                <span class="text-xs font-semibold text-[#1b1c1a] block">${fav.name}</span>
+                <span class="text-[9px] text-brand-on-surface-variant">${fav.desc}</span>
+              </div>
+            </div>
+            <i data-lucide="chevron-right" class="w-3.5 h-3.5 text-brand-secondary"></i>
+          </button>
+        `;
+      }).join('');
+      lucide.createIcons();
+    }
+
+    function loadFavoritePreset(presetId) {
+      const preset = window.favoriteRecipes[presetId];
+      if (!preset) return;
+
+      preset.ingredients.forEach(fid => {
+        if (window.FRUIT_DATABASE[fid]) {
+          window.currentLog.push({
+            ...window.FRUIT_DATABASE[fid],
+            quantity: 1,
+            customId: 'lab-item-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4)
+          });
+        }
+      });
+
+      window.weeklyHydrationTotal += 200;
+      triggerToast(`Loaded "${preset.name}". +200ml Liquid added.`);
+      updateUI();
+      saveToDB();
+    }
+
+    function removeLogItem(customId) {
+      const index = window.currentLog.findIndex(item => item.customId === customId);
+      if (index > -1) {
+        window.currentLog.splice(index, 1);
+        updateUI();
+        saveToDB();
+      }
+    }
+
+    function clearCurrentLog() {
+      window.currentLog = [];
+      updateUI();
+      saveToDB();
+    }
+
+    function applyAIPreset() {
+      window.currentLog.push({ ...window.FRUIT_DATABASE.orange, quantity: 1, customId: 'ai-1' });
+      window.currentLog.push({ ...window.FRUIT_DATABASE.kiwi, quantity: 2, customId: 'ai-2' });
+      triggerToast("Applied high-energy AI preset!");
+      switchTab('logger', document.querySelector('.nav-tab-btn:nth-child(3)'));
+      updateUI();
+      saveToDB();
+    }
+
+    function commitWeeklyLog() {
+      if (window.currentLog.length === 0) {
+        triggerToast("Blender cup is empty! Add fruits first.");
+        return;
+      }
+
+      let totalCals = 0, totalC = 0, totalA = 0, totalPot = 0, totalFib = 0;
+      window.currentLog.forEach(item => {
+        totalCals += item.calories;
+        totalC += item.vitc;
+        totalA += item.vita;
+        totalPot += item.pot;
+        totalFib += item.fiber;
+      });
+
+      const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      const todayDay = days[new Date().getDay()];
+
+      window.weekHistory.push({
+        day: todayDay, calories: totalCals, vitc: totalC, vita: totalA, pot: totalPot, fiber: totalFib, water: 250, date: new Date().toISOString().split('T')[0]
+      });
+
+      window.weeklyHydrationTotal += 250;
+      window.currentLog = [];
+      triggerToast("🌟 Committed log successfully to database!");
+
+      switchTab('home', document.querySelector('.nav-tab-btn:nth-child(1)'));
+      updateUI();
+      saveToDB();
+    }
+
+    function updateUI() {
+      const container = document.getElementById('logged-items-container');
+      const emptyState = document.getElementById('log-empty-state');
+      const badge = document.getElementById('log-count-badge');
+      const clearAllBtn = document.getElementById('clear-all-log-btn');
+
+      if (container && emptyState && badge && clearAllBtn) {
+        if (window.currentLog.length === 0) {
+          container.innerHTML = '';
+          emptyState.classList.remove('hidden');
+          badge.innerText = '0 Items';
+          clearAllBtn.classList.add('hidden');
+        } else {
+          emptyState.classList.add('hidden');
+          clearAllBtn.classList.remove('hidden');
+          badge.innerText = `${window.currentLog.length} Items`;
+
+          container.innerHTML = window.currentLog.map(item => `
+            <div class="flex items-center justify-between p-3.5 bg-white/70 rounded-xl border border-white/50 shadow-sm slide-in">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-full ${item.class || 'bg-brand-surface-low'} flex items-center justify-center text-xl">${item.emoji}</div>
+                <div>
+                  <span class="font-display font-bold text-sm text-[#1b1c1a] block">${item.name}</span>
+                  <span class="text-xs text-[#5a4136]/80 font-medium">${item.standardUnit} • ${item.calories} kcal</span>
+                </div>
+              </div>
+              <button onclick="removeLogItem('${item.customId}')" class="text-[#8e7164] hover:text-brand-error p-1.5"><i data-lucide="x" class="w-4 h-4"></i></button>
+            </div>
+          `).join('');
+        }
+      }
+
+      const blenderContainer = document.getElementById('blender-layers-container');
+      if (blenderContainer) {
+        if (window.currentLog.length === 0) {
+          blenderContainer.innerHTML = `<div class="h-full w-full flex items-center justify-center text-[10px] text-gray-400 font-bold p-4">No ingredients loaded</div>`;
+        } else {
+          blenderContainer.innerHTML = window.currentLog.map(item => {
+            const depthPercent = Math.max(15, 100 / window.currentLog.length);
+            return `<div class="w-full text-center text-[9px] font-bold text-white flex items-center justify-center relative" style="height: ${depthPercent}%; background-color: ${item.color || '#ff6b00'}; opacity: 0.85;"><span class="relative z-10">${item.emoji} ${item.name}</span></div>`;
+          }).reverse().join('');
+        }
+      }
+
+      let accumulatedCal = 0, accumulatedVitC = 0, accumulatedVitA = 0, accumulatedPot = 0, accumulatedFiber = 0, totalGrams = 0;
+      window.weekHistory.forEach(dayLog => {
+        accumulatedCal += dayLog.calories;
+        accumulatedVitC += dayLog.vitc;
+        accumulatedVitA += dayLog.vita;
+        accumulatedPot += dayLog.pot;
+        accumulatedFiber += dayLog.fiber;
+      });
+
+      window.currentLog.forEach(item => { totalGrams += item.weight; });
+
+      safeSetText('dash-calories', `${Math.round(accumulatedCal)} kcal`);
+      safeSetText('dash-count', `${window.weekHistory.length + window.currentLog.length} items`);
+      safeSetText('dash-hydration', `${window.weeklyHydrationTotal} ml`);
+      safeSetText('total-consumed-weight', `${Math.round(totalGrams)}g`);
+      safeSetText('total-water-est', `${Math.round(totalGrams * 0.85)}ml`);
+
+      const hPercentage = Math.min(100, Math.round((window.weeklyHydrationTotal / window.userGoalHydration) * 100));
+      safeSetText('droplet-fluid-txt', `${window.weeklyHydrationTotal} ml`);
+      safeSetText('hydration-percentage-badge', `${hPercentage}% Weekly Goal`);
+      safeSetStyleTransform('droplet-water-level', `translateY(${100 - hPercentage}%)`);
+      
+      let baseScore = Math.min(100, Math.round((accumulatedVitC / WEEKLY_RDA.vitc) * 30 + (accumulatedVitA / WEEKLY_RDA.vita) * 30 + (accumulatedPot / WEEKLY_RDA.pot) * 20 + (window.weeklyHydrationTotal / window.userGoalHydration) * 20));
+      safeSetText('dash-score', isNaN(baseScore) ? '0 / 100' : `${baseScore} / 100`);
+
+      safeSetText('small-txt-pot', `${Math.round(accumulatedPot)} mg`);
+      safeSetStyleHeight('small-bar-pot', `${Math.min(100, (accumulatedPot / WEEKLY_RDA.pot) * 100)}%`);
+
+      safeSetText('small-txt-vita', `${Math.round(accumulatedVitA)} mcg`);
+      safeSetStyleHeight('small-bar-vita', `${Math.min(100, (accumulatedVitA / WEEKLY_RDA.vita) * 100)}%`);
+
+      const vitCPercentage = Math.min(100, Math.round((accumulatedVitC / WEEKLY_RDA.vitc) * 100));
+      safeSetText('central-percentage', `${vitCPercentage}%`);
+      safeSetText('central-calorie-track', `${Math.round(accumulatedVitC)} / ${WEEKLY_RDA.vitc} mg`);
+      safeSetStyleStrokeDashoffset('central-progress-circle', 477 - (477 * vitCPercentage) / 100);
+
+      safeSetText('header-vitc-prog', `${vitCPercentage}%`);
+      safeSetText('header-vita-prog', `${Math.round(Math.min(100, (accumulatedVitA / WEEKLY_RDA.vita) * 100))}%`);
+      safeSetText('header-water-prog', `${hPercentage}%`);
+
+      const calculatedSkinGlow = Math.min(100, Math.round((window.weeklyHydrationTotal / window.userGoalHydration) * 60 + (accumulatedVitC / WEEKLY_RDA.vitc) * 40));
+      const calculatedImmune = Math.min(100, Math.round((accumulatedVitC / WEEKLY_RDA.vitc) * 80 + (accumulatedVitA / WEEKLY_RDA.vita) * 20));
+      const calculatedEnergy = Math.min(100, Math.round((window.weeklyHydrationTotal / window.userGoalHydration) * 40 + (accumulatedPot / WEEKLY_RDA.pot) * 60));
+
+      safeSetText('skin-glow-percentage', `${calculatedSkinGlow}%`);
+      safeSetStyleHeight('synthesis-vision', `${calculatedSkinGlow}%`);
+      safeSetText('immune-percentage', `${calculatedImmune}%`);
+      safeSetStyleHeight('synthesis-immune', `${calculatedImmune}%`);
+      safeSetText('energy-percentage', `${calculatedEnergy}%`);
+      safeSetStyleHeight('synthesis-energy', `${calculatedEnergy}%`);
+
+      const tipText = document.getElementById('synthesis-dynamic-tip');
+      if (tipText) {
+        if (calculatedSkinGlow < 40) {
+          tipText.innerHTML = "💧 <strong>Hydration alert:</strong> Pour some alkaline water or coconut electrolytes to boost Vision & Skin Glow!";
+        } else if (calculatedImmune < 40) {
+          tipText.innerHTML = "🍊 <strong>Immunity shield warning:</strong> Add Oranges or Kiwi to block oxidation.";
+        } else {
+          tipText.innerHTML = "✨ <strong>Excellent synthesis state:</strong> Cloud metrics show healthy biological synthesis!";
+        }
+      }
+      lucide.createIcons();
+    }
+
+    function saveToDB() {
+      VitamixDB.set('current_log', window.currentLog);
+      VitamixDB.set('week_history', window.weekHistory);
+      VitamixDB.set('weekly_hydration', window.weeklyHydrationTotal);
+      VitamixDB.set('favorite_recipes', window.favoriteRecipes);
+      VitamixDB.set('user_goal_calories', window.userGoalCalories);
+      VitamixDB.set('user_goal_hydration', window.userGoalHydration);
+      VitamixDB.set('user_name', window.userName);
+      VitamixDB.set('user_age', window.userAge);
+      VitamixDB.set('user_gender', window.userGender);
+      updateBackupPayload();
+    }
+
+    function simulateBlendAction() {
+      if (window.currentLog.length === 0) {
+        triggerToast("Bowl is empty!");
+        return;
+      }
+      const cup = document.getElementById('blender-layers-container');
+      if (cup) {
+        cup.classList.add('animate-ping');
+        setTimeout(() => {
+          cup.classList.remove('animate-ping');
+          triggerToast("🌪 *Whirrr! Vitamix blending complete!*");
+        }, 800);
+      }
+    }
+
+    function renderWeeklyDistribution() {
+      const parent = document.getElementById('weekly-days-bars');
+      if (!parent) return;
+
+      const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+      let dayMap = { Mon: 0, Tue: 0, Wed: 0, Thu: 0, Fri: 0, Sat: 0, Sun: 0 };
+      window.weekHistory.forEach(item => { if (dayMap[item.day] !== undefined) dayMap[item.day] += item.calories; });
+
+      const maxVal = Math.max(...Object.values(dayMap), 100);
+
+      parent.innerHTML = days.map(d => {
+        const heightPercent = Math.max(10, (dayMap[d] / maxVal) * 100);
+        return `
+          <div class="flex flex-col items-center justify-end h-32 space-y-2">
+            <span class="text-[9px] font-bold text-brand-primary">${dayMap[d] > 0 ? dayMap[d] + 'c' : ''}</span>
+            <div class="w-4 rounded-full relative bg-gray-100 h-24 overflow-hidden">
+              <div class="absolute bottom-0 inset-x-0 rounded-full bg-brand-secondary/60" style="height: ${heightPercent}%"></div>
+            </div>
+            <span class="text-[10px] font-bold text-[#5a4136]">${d}</span>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderLibraryCatalog(filter) {
+      const container = document.getElementById('library-fruit-catalog');
+      if (!container) return;
+
+      let list = Object.values(window.FRUIT_DATABASE);
+      if (filter === 'vitamin_c') {
+        list = list.filter(item => item.vitc >= 30);
+      } else if (filter === 'potassium') {
+        list = list.filter(item => item.pot >= 230);
+      }
+
+      container.innerHTML = list.map(item => `
+        <div class="glass-card rounded-2xl p-4 flex gap-4 hover:shadow-md transition-all duration-300 relative overflow-hidden">
+          <div class="w-16 h-16 rounded-2xl ${item.class} flex items-center justify-center text-3xl self-center">${item.emoji}</div>
+          <div class="flex-1 space-y-1 text-xs">
+            <div class="flex justify-between items-center">
+              <h4 class="font-display font-extrabold text-sm text-brand-on-surface">${item.name}</h4>
+              <span class="bg-brand-surface-low text-brand-on-surface-variant font-bold px-2 py-0.5 rounded text-[10px]">${item.category}</span>
+            </div>
+            <p class="text-[11px] text-[#5a4136] leading-snug">${item.benefits}</p>
+            <button onclick="addFruitToLog('${item.id}')" class="mt-2 text-[10px] font-extrabold text-brand-primary hover:underline">Add Serve +</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function filterLibrary(filter) {
+      document.querySelectorAll('.lib-filter-btn').forEach(btn => {
+        btn.classList.remove('bg-brand-primary', 'text-white');
+        btn.classList.add('text-brand-on-surface-variant', 'hover:bg-white/50');
+      });
+      if (event && event.target) {
+        event.target.classList.add('bg-brand-primary', 'text-white');
+      }
+      renderLibraryCatalog(filter);
+    }
+
+    function renderWeeklyHistoryList() {
+      const container = document.getElementById('weekly-history-list');
+      if (!container) return;
+
+      if (window.weekHistory.length === 0) {
+        container.innerHTML = `<p class="text-gray-400 italic text-center py-4">No historical records found. Complete your first log!</p>`;
+        return;
+      }
+
+      container.innerHTML = window.weekHistory.map((item, index) => `
+        <div class="flex items-center justify-between p-2.5 bg-white/40 rounded-xl border border-white/30">
+          <div><span class="font-bold text-[#1b1c1a] block">Blend Log #${index + 1} (${item.day})</span><span class="text-gray-500 text-[10px]">${item.date}</span></div>
+          <div class="text-right font-medium"><span class="text-brand-primary block">${item.calories} kcal</span><span class="text-[10px] text-gray-400">C: ${item.vitc}mg | Fib: ${item.fiber}g</span></div>
+        </div>
+      `).reverse().join('');
+    }
+
+    function renderInsightsGauges() {
+      let accumulatedCal = 0, accumulatedVitC = 0, accumulatedVitA = 0, accumulatedPot = 0, accumulatedFiber = 0;
+      window.weekHistory.forEach(dayLog => {
+        accumulatedCal += dayLog.calories;
+        accumulatedVitC += dayLog.vitc;
+        accumulatedVitA += dayLog.vita;
+        accumulatedPot += dayLog.pot;
+        accumulatedFiber += dayLog.fiber;
+      });
+
+      const calPercentage = Math.min(100, Math.round((accumulatedCal / window.userGoalCalories) * 100));
+      safeSetText('insights-calorie-text', `${calPercentage}%`);
+      safeSetText('insights-calorie-subtitle', `${Math.round(accumulatedCal)} / ${window.userGoalCalories} kcal consumed`);
+      safeSetStyleStrokeDashoffset('insights-calorie-circle', 377 - (377 * calPercentage) / 100);
+
+      safeSetText('prog-txt-vitc', `${Math.round(accumulatedVitC)} / ${WEEKLY_RDA.vitc} mg`);
+      safeSetStyleHeight('prog-bar-vitc', `${Math.min(100, (accumulatedVitC / WEEKLY_RDA.vitc) * 100)}%`);
+
+      safeSetText('prog-txt-vita', `${Math.round(accumulatedVitA)} / ${WEEKLY_RDA.vita} mcg`);
+      safeSetStyleHeight('prog-bar-vita', `${Math.min(100, (accumulatedVitA / WEEKLY_RDA.vita) * 100)}%`);
+
+      safeSetText('prog-txt-pot', `${Math.round(accumulatedPot)} / ${WEEKLY_RDA.pot} mg`);
+      safeSetStyleHeight('prog-bar-pot', `${Math.min(100, (accumulatedPot / WEEKLY_RDA.pot) * 100)}%`);
+
+      safeSetText('prog-txt-fiber', `${Math.round(accumulatedFiber)} / ${WEEKLY_RDA.fiber} g`);
+      safeSetStyleHeight('prog-bar-fiber', `${Math.min(100, (accumulatedFiber / WEEKLY_RDA.fiber) * 100)}%`);
+    }
+
+    function handleSearch(query) {
+      const container = document.getElementById('library-fruit-catalog');
+      if (!query.trim()) {
+        renderLibraryCatalog('all');
+        return;
+      }
+      const results = Object.values(window.FRUIT_DATABASE).filter(f => f.name.toLowerCase().includes(query.toLowerCase()));
+      if (container) {
+        container.innerHTML = results.map(item => `
+          <div class="glass-card rounded-2xl p-4 flex gap-4 hover:shadow-md">
+            <div class="w-16 h-16 rounded-2xl ${item.class} flex items-center justify-center text-3xl">${item.emoji}</div>
+            <div class="flex-1 text-xs">
+              <h4 class="font-extrabold text-brand-on-surface">${item.name}</h4>
+              <p class="text-[11px] leading-snug">${item.benefits}</p>
+              <button onclick="addFruitToLog('${item.id}')" class="mt-2 text-brand-primary font-bold">Add Serve +</button>
+            </div>
+          </div>
+        `).join('');
+      }
+    }
+
+    function clearSearch() {
+      const input = document.getElementById('fruit-search-input');
+      if (input) input.value = '';
+      renderLibraryCatalog('all');
+    }
+
+    // Modal viewcontrollers
+    function toggleInfoModal(show) {
+      const el = document.getElementById('info-modal');
+      if (el) el.classList.toggle('hidden', !show);
+    }
+
+    function openCustomLogModal() { document.getElementById('custom-modal').classList.remove('hidden'); }
+    function closeCustomLogModal() { document.getElementById('custom-modal').classList.add('hidden'); }
+
+    function handleCustomFruitSubmit(e) {
+      e.preventDefault();
+      const name = document.getElementById('custom-name').value;
+      const weight = parseFloat(document.getElementById('custom-weight').value);
+      const calories = parseFloat(document.getElementById('custom-calories').value);
+      const vitc = parseFloat(document.getElementById('custom-vitc').value);
+      const vita = parseFloat(document.getElementById('custom-vita').value);
+      const pot = parseFloat(document.getElementById('custom-pot').value);
+      const fiber = parseFloat(document.getElementById('custom-fiber').value);
+
+      window.currentLog.push({
+        id: 'custom-' + Date.now(), name, emoji: '🍍', category: 'Custom', standardUnit: `${weight}g serve`, weight, calories, vitc, vita, pot, fiber, color: '#ff6b00', benefits: 'Custom home blended ingredient.', class: 'bg-orange-50', quantity: 1, customId: 'custom-item-' + Date.now()
+      });
+
+      closeCustomLogModal();
+      triggerToast(`Added ${name}!`);
+      updateUI();
+      saveToDB();
+    }
+
+    function updateGoalFromRange(val) {
+      safeSetText('range-val-goal', `${val} kcal`);
+      window.userGoalCalories = parseInt(val);
+      saveToDB();
+    }
+
+    function saveProfile() {
+      window.userName = document.getElementById('user-name').value;
+      window.userAge = document.getElementById('user-age').value;
+      window.userGender = document.getElementById('user-gender').value;
+      triggerToast("Profile updated!");
+      saveToDB();
+    }
+
+    function copySyncKey() {
+      const syncKey = document.getElementById('sync-key-display').value;
+      navigator.clipboard.writeText(syncKey).then(() => {
+        triggerToast("Backup payload copied to clipboard!");
+      }).catch(() => {
+        const el = document.getElementById('sync-key-display');
+        el.select();
+        document.execCommand('copy');
+        triggerToast("Backup payload copied!");
+      });
+    }
+
+    function connectExistingKey() {
+      const targetStr = document.getElementById('input-sync-key').value.trim();
+      if (!targetStr) {
+        triggerToast("Please input a valid payload string!");
+        return;
+      }
+      
+      try {
+        const decoded = JSON.parse(decodeURIComponent(escape(atob(targetStr))));
+        window.currentLog = decoded.currentLog || [];
+        window.weekHistory = decoded.weekHistory || [];
+        window.weeklyHydrationTotal = decoded.weeklyHydrationTotal || 0;
+        window.favoriteRecipes = decoded.favoriteRecipes || {};
+        window.userGoalCalories = decoded.userGoalCalories || 450;
+        window.userGoalHydration = decoded.userGoalHydration || 2000;
+        window.userName = decoded.userName || "Health Champion";
+        window.userAge = decoded.userAge || 28;
+        window.userGender = decoded.userGender || "male";
+
+        saveToDB();
+        
+        // sync views
+        const nameInput = document.getElementById('user-name');
+        if (nameInput) nameInput.value = window.userName;
+        const ageInput = document.getElementById('user-age');
+        if (ageInput) ageInput.value = window.userAge;
+        const genderInput = document.getElementById('user-gender');
+        if (genderInput) genderInput.value = window.userGender;
+        const goalInput = document.getElementById('user-goal-calories');
+        if (goalInput) goalInput.value = window.userGoalCalories;
+
+        updateUI();
+        renderFavoritesList();
+        renderWeeklyDistribution();
+        renderWeeklyHistoryList();
+
+        triggerToast("Backup profile restored successfully!");
+        document.getElementById('input-sync-key').value = '';
+      } catch (e) {
+        triggerToast("Invalid backup payload string format.");
+      }
+    }
+
+    function clearTotalHistory() {
+      window.weekHistory = [];
+      window.weeklyHydrationTotal = 0;
+      updateUI();
+      renderWeeklyDistribution();
+      renderWeeklyHistoryList();
+      saveToDB();
+      triggerToast("Data reset completed!");
+    }
+
+    function generateRandomQuote() {
+      const r = Math.floor(Math.random() * QUOTES.length);
+      safeSetText('motivational-quote-box', `"${QUOTES[r]}"`);
+    }
+
+    function showAllQuickPicks() {
+      switchTab('library', document.querySelector('.nav-tab-btn:nth-child(2)'));
+    }
+
+    function safeSetText(id, value) { const el = document.getElementById(id); if (el) el.style.display = 'none'; if (el) el.innerText = value; if (el) el.style.display = ''; }
+    function safeSetStyleHeight(id, height) { const el = document.getElementById(id); if (el) el.style.height = height; }
+    function safeSetStyleStrokeDashoffset(id, offset) { const el = document.getElementById(id); if (el) el.style.strokeDashoffset = offset; }
+    function safeSetStyleTransform(id, transformVal) { const el = document.getElementById(id); if (el) el.style.transform = transformVal; }
+    function triggerToast(m) { const t = document.getElementById('toast-message'), x = document.getElementById('toast-text'); if (t && x) { x.innerText = m; t.classList.remove('translate-y-[-100px]', 'opacity-0'); t.classList.add('translate-y-0', 'opacity-100'); setTimeout(() => { t.classList.add('translate-y-[-100px]', 'opacity-0'); t.classList.remove('translate-y-0', 'opacity-100'); }, 3500); } }
+  </script>
+
+</body>
+</html>
